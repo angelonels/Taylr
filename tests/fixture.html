@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><title>Taylr acceptance fixture</title
+  ><style>
+    body {
+      font: 18px system-ui;
+      max-width: 960px;
+      margin: 80px auto;
+      background: #f5f5f2;
+      color: #252623;
+    }
+    aside,
+    article {
+      padding: 36px;
+      margin: 24px 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 16px;
+    }
+    button {
+      padding: 16px;
+    }
+    a {
+      display: block;
+    }
+  </style>
+  <h1>A page with room to breathe.</h1>
+  <p>Browser acceptance fixture · Taylr</p>
+  <aside id="distraction" class="panel" style="display: block !important">
+    An unwanted sidebar
+  </aside>
+  <article tabindex="0" id="keep" class="panel">
+    The content you came for.
+  </article>
+  <button id="replace">Replace content</button>
+  <p>Page clicks: <span id="click-count">0</span></p>
+  <script>
+    document.querySelector("#distraction").onclick = () =>
+      (document.querySelector("#click-count").textContent = "1");
+    document.querySelector("#replace").onclick = () => {
+      const old = document.querySelector("#distraction");
+      old.replaceWith(old.cloneNode(true));
+    };
+  </script>
+</html>

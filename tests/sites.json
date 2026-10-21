@@ -1,0 +1,202 @@
+[
+  {
+    "id": "youtube",
+    "name": "YouTube",
+    "category": "Video streaming · web components / SPA",
+    "url": "https://www.youtube.com/",
+    "target": "ytd-masthead",
+    "keep": "ytd-page-manager",
+    "status": "H01–H06 passed",
+    "notes": "Check lazy content and client navigation; do not sign in or play videos."
+  },
+  {
+    "id": "wikipedia",
+    "name": "Wikipedia",
+    "category": "Encyclopedia · server-rendered content",
+    "url": "https://en.wikipedia.org/wiki/Main_Page",
+    "target": "#mp-topbanner",
+    "keep": "#mp-upper",
+    "status": "H01–H06 passed",
+    "notes": "Banner hide, reload persistence, and Restore verified in Incognito on 2026-10-21. Expanded matrix still requires a run."
+  },
+  {
+    "id": "github",
+    "name": "GitHub",
+    "category": "Code hosting · progressive navigation",
+    "url": "https://github.com/microsoft/vscode",
+    "target": "header",
+    "keep": "main",
+    "status": "planned",
+    "notes": "Use a public repository; never star, fork, sign in, or change repository data."
+  },
+  {
+    "id": "stackoverflow",
+    "name": "Stack Overflow",
+    "category": "Technical Q&A · dense navigation",
+    "url": "https://stackoverflow.com/questions",
+    "target": "#sidebar",
+    "keep": "#mainbar",
+    "status": "planned",
+    "notes": "Check side navigation without affecting question rows. Challenges are reported as blocked."
+  },
+  {
+    "id": "mdn",
+    "name": "MDN Web Docs",
+    "category": "API reference · documentation shell",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/API/Document",
+    "target": "header",
+    "keep": "main",
+    "status": "planned",
+    "notes": "Check documentation navigation and long article layout."
+  },
+  {
+    "id": "google",
+    "name": "Google Search",
+    "category": "Search · dynamic result composition",
+    "url": "https://www.google.com/search?q=web+standards",
+    "target": "#searchform",
+    "keep": "#search",
+    "status": "planned",
+    "notes": "Public query only. Do not solve CAPTCHAs or bypass consent / regional interstitials."
+  },
+  {
+    "id": "bbc",
+    "name": "BBC News",
+    "category": "News publication · responsive editorial layout",
+    "url": "https://www.bbc.com/news",
+    "target": "header",
+    "keep": "main",
+    "status": "planned",
+    "notes": "Check masthead removal and editorial reflow. No subscription or consent submissions needed."
+  },
+  {
+    "id": "hackernews",
+    "name": "Hacker News",
+    "category": "Social news · legacy table layout",
+    "url": "https://news.ycombinator.com/",
+    "target": "#hnmain > tbody > tr:first-child",
+    "keep": ".athing",
+    "status": "planned",
+    "notes": "Classic table geometry; preserve story rows. Do not vote or log in."
+  },
+  {
+    "id": "reddit",
+    "name": "Reddit",
+    "category": "Community feed · custom elements",
+    "url": "https://www.reddit.com/r/programming/",
+    "target": "reddit-header-large",
+    "keep": "main",
+    "status": "planned",
+    "notes": "Hide a light-DOM host; do not enter closed shadow roots. Login / access walls are blocked results."
+  },
+  {
+    "id": "amazon",
+    "name": "Amazon India",
+    "category": "Retail storefront · personalized catalog shell",
+    "url": "https://www.amazon.in/s?k=notebook",
+    "target": "#nav-main",
+    "keep": ".s-main-slot",
+    "status": "planned",
+    "notes": "Public search only. No cart, purchases, location entry, or account actions."
+  },
+  {
+    "id": "ebay",
+    "name": "eBay",
+    "category": "Marketplace · filtered search listings",
+    "url": "https://www.ebay.com/sch/i.html?_nkw=notebook",
+    "target": "#gh",
+    "keep": "#srp-river-results",
+    "status": "planned",
+    "notes": "Preserve result listings and check reflow after removing global navigation."
+  },
+  {
+    "id": "etsy",
+    "name": "Etsy",
+    "category": "Craft marketplace · image-heavy commerce",
+    "url": "https://www.etsy.com/search?q=notebook",
+    "target": "header",
+    "keep": "main",
+    "status": "planned",
+    "notes": "Image-heavy responsive page; no favorites, account actions, or checkout."
+  },
+  {
+    "id": "openstreetmap",
+    "name": "OpenStreetMap",
+    "category": "Interactive map · persistent canvas",
+    "url": "https://www.openstreetmap.org/",
+    "target": "header",
+    "keep": "#map",
+    "status": "planned",
+    "notes": "Preserve map canvas and pan / zoom behavior. Never request geolocation or edit map data."
+  },
+  {
+    "id": "discourse",
+    "name": "Discourse Meta",
+    "category": "Forum · client-rendered application",
+    "url": "https://meta.discourse.org/",
+    "target": "header.d-header",
+    "keep": "#main-outlet",
+    "status": "planned",
+    "notes": "Check SPA layout and topic list updates. No posts, likes, or account changes."
+  },
+  {
+    "id": "twitch",
+    "name": "Twitch",
+    "category": "Live streaming · React application",
+    "url": "https://www.twitch.tv/directory",
+    "target": ".top-nav",
+    "keep": "main",
+    "status": "planned",
+    "notes": "Public directory only; no stream playback, chats, subscriptions, or login."
+  },
+  {
+    "id": "imdb",
+    "name": "IMDb",
+    "category": "Entertainment database · ranked catalog",
+    "url": "https://www.imdb.com/chart/top/",
+    "target": "#imdbHeader",
+    "keep": "main",
+    "status": "planned",
+    "notes": "Preserve ranked titles; report region and bot interstitials as blocked."
+  },
+  {
+    "id": "npm",
+    "name": "npm",
+    "category": "Package registry · technical catalog",
+    "url": "https://www.npmjs.com/package/typescript",
+    "target": "header",
+    "keep": "main",
+    "status": "planned",
+    "notes": "Public package page, with long technical content and package metadata."
+  },
+  {
+    "id": "caniuse",
+    "name": "Can I use",
+    "category": "Compatibility data · interactive matrix",
+    "url": "https://caniuse.com/css-grid",
+    "target": "header",
+    "keep": "main",
+    "status": "planned",
+    "notes": "Preserve compatibility data; selectors are candidates until baseline-validated."
+  },
+  {
+    "id": "archive",
+    "name": "Internet Archive",
+    "category": "Digital archive · mixed custom-element interface",
+    "url": "https://archive.org/details/texts",
+    "target": "ia-topnav",
+    "keep": "#maincontent",
+    "status": "planned",
+    "notes": "Hide a custom-element host, preserve collection items, no downloads or lending."
+  },
+  {
+    "id": "gutenberg",
+    "name": "Project Gutenberg",
+    "category": "Ebook library · static semantic pages",
+    "url": "https://www.gutenberg.org/",
+    "target": "header",
+    "keep": "main",
+    "status": "planned",
+    "notes": "Static document coverage; target contracts may need revision after first baseline check."
+  }
+]
