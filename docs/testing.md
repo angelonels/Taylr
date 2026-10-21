@@ -1,53 +1,58 @@
 # Browser acceptance contract
 
-Written before implementation. E2E is the test mechanism; no mirrored unit tests.
+E2E is the test mechanism. Failure scenarios precede implementation; no mirrored unit tests.
 
-Failure cases to exercise:
+## Isolation
 
-- A click follows a link or activates a page handler instead of hiding its target.
-- Hiding one of two similar elements hides both, or a broad selector hides the page.
-- Reload, another tab, or dynamically inserted content loses the saved rule.
-- Undo removes the wrong rule; Restore changes the site's original inline styling.
-- Escape leaks picker listeners or a second activation duplicates the interface.
-- A storage failure reports success, or concurrent tabs overwrite each other's rules.
-- A restricted browser URL fails without a recovery message.
-- Page styles corrupt extension controls; zoom or reduced motion breaks access.
-
-Repeatable artifacts: Playwright HTML report, traces, and screenshots in output/playwright. Tests connect only to the already running, explicitly approved Chrome profile via TAYLR_CDP_URL. They never launch a browser or inspect another profile. A local fixture gives deterministic failures; the opt-in site matrix checks real public sites. Do not put profile data or authenticated screenshots in Git.
-
-## One browser connection across runs
-
-`npm run browser:session` holds one approved CDP connection. Keep it running while iterating. The Playwright runner sends allowlisted scenario IDs to that process over an authenticated loopback endpoint, rather than reconnecting to Chrome for each run. The connection token is kept in `.local/browser-session.json`, ignored by Git with owner-only file permissions. The endpoint does not accept arbitrary JavaScript or URLs. It serializes runs and rejects browser-origin requests.
-
-If Chrome disconnects, the broker reports that condition and never reconnects automatically. Restart it explicitly when needed. The user has authorized the agent to press Allow on the remote-debugging prompt in the approved profile; never ask the user repeatedly. No browser protections are disabled.
-
-All test interactions and explicit trace captures take place in newly created Incognito contexts. The runner never launches a browser or another profile. Private rules use a separate, memory-only session namespace. Each scenario refuses a nonempty private site profile and only cleans up after claiming a clean profile. Do not edit the same test origin in another private tab during a run. Set `TAYLR_RELOAD_BUILD=1` only when explicitly reloading a changed unpacked build at broker startup. This opens a short-lived Chrome extensions setup page outside the captured trace. Test runs never reload the extension. Extension reload clears private rules, so finish private customization work before an explicit build reload.
+Automated tests launch Playwright’s bundled Chromium in headless mode, with a new temporary data directory and extension copy per test. They never attach to any personal browser, profile, cookies, or credentials. The temporary extension manifest grants only the fixture and selected site’s exact origin; the shipped manifest retains optional per-site permissions. Temporary files and browsers close in teardown. Run one Playwright command at a time: separate commands share the report/artifact directory; workers inside one command have isolated browsers and artifacts. Named host locks serialize cases for the same hostname while unrelated sites can run in parallel. `TAYLR_HEADED=1` shows this disposable browser for debugging.
 
 ```sh
-# Terminal 1: start the fixture server.
-npm run dev
-
-# Terminal 2: connect once; keep this running.
-TAYLR_CDP_URL='ws://127.0.0.1:9222/devtools/browser/…' \
-TAYLR_EXTENSION_ID='your-extension-id' npm run browser:session
-
-# Terminal 3: repeat without opening a new CDP connection.
+npm ci
+npx playwright install chromium
+npm run build
 npm run test:e2e
-TAYLR_SITES=wikipedia npm run test:live
-# All 20 candidate sites, after reviewing permissions and baseline contracts:
-npm run test:live
+npm run test:live -- --workers=2
+TAYLR_SITES=youtube,amazon TAYLR_COMPONENTS=primary npm run test:live
+npm run test:report
 ```
 
-Load the extension in the approved profile, enable Allow in Incognito, and grant each selected test origin before its live run. The live runner checks permission first and fails with a recovery message instead of opening repeated permission prompts. The fixture uses `http://127.0.0.1:5173`. Never grant access to account pages merely to make a test pass.
+The default deterministic suite runs without live-site access. A test-only action bridge invokes the real registered toolbar handler; it cannot create Chrome’s native activeTab gesture. Only the preview tests grant `<all_urls>` in their disposable extension copy so the actual captureVisibleTab API can be exercised. Production retains optional per-origin access and activeTab. This test grant never touches a personal profile. Native permission-dialog presentation is outside this programmatic harness.
 
-The default suite runs the deterministic fixture and reports the 20 live candidates as intentionally skipped. `test:live` opts into the public-site matrix; `TAYLR_SITES` narrows it by ID. The fixture also checks keyboard Hide / Undo, reflow at 320, 375, 768, 1024, 1440 and 2560 CSS pixels, and captures the side panel in light and dark appearances.
+The deterministic fixture runs without live-site access. The opt-in catalog currently has 37 modern sites and three deliberately different component contracts per site (111 cases). The shared six checkpoints are baseline/uniqueness, Hide without navigation, Undo, attached-but-hidden reload/new-tab persistence, Restore across tabs, and Escape. Repeating these invariants is necessary, but website count alone is not coverage: component geometry, rendering model, sibling retention, nested controls, sticky positioning and replacement behavior explain why each case exists.
 
-See [the site matrix](site-test-matrix.md) for the six shared scenarios, why each candidate matters, and the honest coverage status.
+## Failure scenarios
 
-## Regression coverage added during review
+- A selection follows a link or activates a page control.
+- A button glyph or label is hidden instead of its control, or default grouping prevents explicit Child selection.
+- Hiding one repeated card hides a sibling, or a broad selector hides the page.
+- A container’s nested child is hidden instead of the selected parent, moving onto another child loses explicit refinement, or Down loses the child selected before moving Up.
+- Synthetic site clicks, key events or open-shadow toolbar clicks create rules; modified Enter hides accidentally; or Undo leaves page selection unusable.
+- Cancel/Escape fails, focus is lost when a control disappears, reopening the dock duplicates roots, or the outline stops following layout shifts.
+- The floating toolbar blocks a target and cannot be moved out of the way.
+- A repeated card changes position and a new neighbor inherits its saved rule. Live assertions must follow a declared stable identity when server results reorder, rather than assuming the first position still describes the same card.
+- Generated DOM identifiers or URL tracking parameters survive only one render and break persistence. Stable query parameters that distinguish content must remain part of the rule.
+- A semantic landmark receives a positional selector; inserting a same-tag sibling reveals it and hides the wrong wrapper.
+- A product link regenerates search attribution and reveals the hidden card despite a stable product identifier.
+- Reload, a new tab, or dynamically replaced content loses a saved rule.
+- Undo removes a different tab’s rule, concurrent writers lose an update, or a delayed mutation response overwrites a newer broadcast/storage state.
+- A delayed Save/Restore reply overwrites a newer broadcast, or closing during Save fails.
+- Restricted URLs or denied permissions provide no recovery path; concurrent first-use action invocations race dynamic registration into a false error.
+- Saved rules show generic container tags when recognizable text is available.
+- Child traversal selects a `visibility: hidden` element.
+- Dock bounds, edge expansion, readable controls, focus or reflow breaks at narrow widths or native 200% Chrome zoom.
+- Paused animation frames leave Hide waiting for its preview; preview capture failure blocks Hide, another tab’s pixels leak into a rule, img-src CSP blocks the preview, or preview quota pressure prevents saving.
+- Reflow, scrolling or removal during native capture saves pixels from the component’s former position. Keyboard grip activation travels through a spring or a held keyboard press shrinks its control.
 
-The fixture exercises concurrent worker writes and exact rule IDs, private storage without changing the regular-origin record, Undo ownership when another tab adds a rule, and real tab activation from a website to a protected browser page while Restore is pending. A delayed reply is injected at the panel's browser API boundary. Denied permission is injected at that boundary too, avoiding an unwanted real permission prompt. These are browser integration scenarios, not unit tests.
+The fixture covers concurrency, inline important styles, keyboard/pointer interception, DOM replacement, selector identity and hierarchy. Separate E2E scenarios cover dock open/close, layout preservation, drag and keyboard movement, edge expansion, the six widths 320/375/768/1024/1440/2560, native 200% browser zoom, reduced motion, denied access, concurrent action invocation and delayed replies. Preview tests use native Chrome capture/cropping, persistence and individual Restore, CSP-safe rendering, inactive-tab refusal, paused-frame deadlines and quota fallback. WebP/PNG artifacts expose the actual visual result; traces preserve the interaction and DOM snapshots.
 
-The viewport checks establish absence of horizontal overflow; appearance screenshots support manual inspection. They do not establish WCAG conformance or 200% zoom coverage. Storage quota failure remains a documented follow-up acceptance case.
+A separate opt-in LeetCode access smoke verifies the action can mount the dock on ordinary HTTPS without a false “protected” state. It records website challenge status separately. Passing that smoke does not verify LeetCode problem rows or filters behind Cloudflare.
 
-Live scenarios explicitly activate the target page before keyboard input. A multi-tab check must not infer focus after opening a revisit or panel tab; YouTube’s initial Exit failure exposed this test-driver requirement. The corrected scenario passed without weakening the Escape assertion.
+## Evidence and interpretation
+
+Each component run owns `output/playwright/sites/<site>/<component>/`: baseline HTML, before/hidden/restored-state evidence, completed checkpoints, failure details when applicable, and a trace. Only that case’s generated directory is replaced on rerun. Timestamped results identify disposable Playwright Chromium and fingerprint the extension build plus component contract. Changed contracts/builds are stale until rerun; old personal-profile results do not establish current coverage. The HTML test report is under `output/playwright/report/`; `test:report` aggregates the latest component results into `catalog-results.json` and `catalog-report.html`.
+
+The picker must be visible before the runner sends keyboard input. A resolved click is not proof that asynchronous permission/register/start steps have completed. Pointer selection samples exposed points of the declared component, never substitutes a broader target. It follows actual inspector selection through the internal state query and verifies the saved rule resolves to the exact declared DOM element; merely hiding an ancestor does not qualify. Canvas contracts use a stable viewport host or stage relationship; mutable pixel dimensions are not an identity. Retained content must remain independent of the hidden surface. The original unselected listing is tracked through Hide/Undo; later server responses may replace that neighbor, so revisits require a current independent result. The selected listing must still resolve to exactly one attached, hidden node. Declared initial app values wait for hydration before state comparisons. Airbnb’s search/filter contracts require enabled native controls so server-rendered placeholders cannot qualify as a ready baseline. Candidate selectors are validated against observed DOM; contract changes must retain the stated component and reason. Failure capture follows the actual failing tab, including new-tab access restrictions. Interactive-app contracts also retain meaningful state where available, such as board zoom, search text, or an unopened sort control.
+
+The live command is intentionally strict: access blocks still produce a nonzero test exit, while the catalog report distinguishes them from product failures. They are never silently converted to passing tests.
+
+No CAPTCHA, login wall, paywall, or security interstitial is bypassed. An access block remains a block, never a feature pass. Partial checkpoints, selector failures and extension failures remain distinct from completed cases. Generated evidence and browser data stay out of Git.

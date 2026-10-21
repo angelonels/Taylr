@@ -1,6 +1,6 @@
 {
   "name": "taylr",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,15 +8,25 @@
     "dev": "vite --host 127.0.0.1",
     "test:e2e": "playwright test",
     "check": "tsc --noEmit",
-    "format:check": "prettier --check src scripts tests panel.html playwright.config.ts",
-    "browser:session": "node scripts/browser-session.mjs",
-    "test:live": "TAYLR_LIVE_SITES=1 playwright test"
+    "format:check": "prettier --check src scripts tests notice.html playwright.config.ts vite.config.ts tsconfig.json",
+    "test:live": "TAYLR_LIVE_SITES=1 playwright test",
+    "test:report": "node scripts/report-sites.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.56.0",
+    "@playwright/test": "^1.64.1",
+    "@resvg/resvg-js": "^2.6.2",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/chrome": "^0.1.24",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "prettier": "^3.9.10",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vite": "^7.1.12"
+  },
+  "dependencies": {
+    "motion": "^14.5.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   }
 }

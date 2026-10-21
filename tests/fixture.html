@@ -32,10 +32,63 @@
   <article tabindex="0" id="keep" class="panel">
     The content you came for.
   </article>
+  <aside id="nested">
+    <span id="nested-first">Keep this sibling</span
+    ><button id="nested-child">A nested control</button>
+  </aside>
+  <button id="icon-control" aria-label="Icon action">
+    <svg
+      id="icon-graphic"
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      aria-hidden="true"
+    >
+      <path id="icon-path" d="M4 4h12v12H4z" fill="currentColor" />
+    </svg>
+    <span id="icon-label">Icon action</span>
+  </button>
+  <aside data-testid="volatile">
+    A component with a generated DOM identifier
+  </aside>
+  <section id="link-feed">
+    <article data-testid="story">
+      <a
+        href="/stories/target?view=full&amp;source_impression_id=initial&amp;utm_source=initial"
+        >Target story</a
+      >
+    </article>
+    <article data-testid="story">
+      <a href="/stories/target?view=compact&amp;source_impression_id=initial"
+        >Retained story</a
+      >
+    </article>
+  </section>
+  <a id="navigation" href="/tests/fixture.html?navigation=1"
+    >A navigation link</a
+  >
   <button id="replace">Replace content</button>
   <p>Page clicks: <span id="click-count">0</span></p>
   <script>
+    if (sessionStorage.getItem("prepend-promotion"))
+      document
+        .querySelector("#link-feed")
+        .insertAdjacentHTML(
+          "afterbegin",
+          '<article data-testid="story"><a href="#promotion">Promotion</a></article>',
+        );
+    document.querySelector('[data-testid="volatile"]').id = crypto.randomUUID();
+    for (const link of document.querySelectorAll(
+      'a[href^="/stories/target?"]',
+    )) {
+      const url = new URL(link.href);
+      url.searchParams.set("source_impression_id", crypto.randomUUID());
+      url.searchParams.set("utm_source", crypto.randomUUID());
+      link.setAttribute("href", url.pathname + url.search);
+    }
     document.querySelector("#distraction").onclick = () =>
+      (document.querySelector("#click-count").textContent = "1");
+    document.querySelector("#icon-control").onclick = () =>
       (document.querySelector("#click-count").textContent = "1");
     document.querySelector("#replace").onclick = () => {
       const old = document.querySelector("#distraction");

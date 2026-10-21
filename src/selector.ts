@@ -10,6 +10,40 @@ const blocked = new Set([
 export function canSelect(element: Element): boolean {
   return !blocked.has(element.tagName) && element.getRootNode() === document;
 }
+function linkSelector(tag: string, value: string): string {
+  const [address, ...fragment] = value.split("#");
+  const question = address.indexOf("?");
+  if (question < 0) return `${tag}[href=${CSS.escape(value)}]`;
+  const path = address.slice(0, question);
+  const parameters = address
+    .slice(question + 1)
+    .split("&")
+    .filter(Boolean);
+  // Ignore known attribution IDs only; query parameters can be the content identity.
+  const stable = parameters.filter(
+    (parameter) =>
+      !/^(utm_[^=]*|fbclid|gclid|source_impression_id|federated_search_id|previous_page_section_name)=/i.test(
+        parameter,
+      ),
+  );
+  if (stable.length === parameters.length)
+    return `${tag}[href=${CSS.escape(value)}]`;
+  let selector = `${tag}:is([href=${CSS.escape(path)}],[href^=${CSS.escape(path + "?")}])`;
+  for (const parameter of stable) {
+    const boundaries = [
+      ["*", "?" + parameter + "&"],
+      ["*", "&" + parameter + "&"],
+      ["$", "?" + parameter],
+      ["$", "&" + parameter],
+      ["*", "?" + parameter + "#"],
+      ["*", "&" + parameter + "#"],
+    ];
+    selector += `:is(${boundaries.map(([operator, token]) => `[href${operator}=${CSS.escape(token)}]`).join(",")})`;
+  }
+  if (fragment.length)
+    selector += `[href$=${CSS.escape("#" + fragment.join("#"))}]`;
+  return selector;
+}
 export function selectorFor(element: Element): string | null {
   if (!canSelect(element)) return null;
   const unique = (selector: string) => {
@@ -19,22 +53,58 @@ export function selectorFor(element: Element): string | null {
   const path: string[] = [];
   let node: Element | null = element;
   while (node && node !== document.body) {
-    const tag = node.localName;
-    if (node.id) {
-      const selector = `${tag}#${CSS.escape(node.id)}`;
-      const full = [selector, ...path].join(" > ");
-      if (unique(full)) return full;
-    }
-    for (const attr of ["data-testid", "aria-label", "name"]) {
+    const name = node.localName;
+    const tag = CSS.escape(name);
+    const candidates: string[] = [];
+    let combined = tag;
+    for (const attr of [
+      "data-testid",
+      "data-test-id",
+      "data-a-target",
+      "data-e2e",
+      "data-asin",
+      "href",
+      "aria-label",
+      "name",
+      "role",
+    ]) {
       const value = node.getAttribute(attr);
       if (!value) continue;
-      const selector = `${tag}[${attr}=${CSS.escape(value)}]`;
+      const selector =
+        attr === "href"
+          ? linkSelector(tag, value)
+          : `${tag}[${attr}=${CSS.escape(value)}]`;
+      const full = [selector, ...path].join(" > ");
+      if (unique(full)) return full;
+      candidates.push(selector);
+      combined += selector.slice(tag.length);
+      const combinedPath = [combined, ...path].join(" > ");
+      if (unique(combinedPath)) return combinedPath;
+    }
+    // Prefer combinations of semantic identity over a potentially attributed child link.
+    for (const selector of candidates) {
+      // A card can keep its identity through wrapper/reordering changes via its own link.
+      const link = node.querySelector("a[href]");
+      const href = link?.getAttribute("href");
+      if (href && href !== "#") {
+        const anchored = `${selector}:has(${linkSelector("a", href)})`;
+        const anchoredPath = [anchored, ...path].join(" > ");
+        if (unique(anchoredPath)) return anchoredPath;
+      }
+    }
+    // UUIDs and React-generated identifiers describe a render, not a persistent element.
+    const generatedId =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        node.id,
+      ) || /^[:_]r[\w:-]*[:_]$/.test(node.id);
+    if (node.id && !generatedId) {
+      const selector = `${tag}#${CSS.escape(node.id)}`;
       const full = [selector, ...path].join(" > ");
       if (unique(full)) return full;
     }
     const peers = node.parentElement
       ? [...node.parentElement.children].filter(
-          (peer) => peer.localName === tag,
+          (peer) => peer.localName === name,
         )
       : [];
     const part =

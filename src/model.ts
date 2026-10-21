@@ -1,4 +1,11 @@
+export interface ComponentPreview {
+  dataUrl: string;
+  width: number;
+  height: number;
+  partial: boolean;
+}
 export interface HideRule {
+  preview?: ComponentPreview;
   id: string;
   selector: string;
   label: string;
@@ -11,7 +18,13 @@ export interface SiteProfile {
 }
 export type Request =
   | { type: "get" | "restore"; origin: string }
-  | { type: "add"; origin: string; selector: string; label: string }
+  | {
+      type: "add";
+      origin: string;
+      selector: string;
+      label: string;
+      preview?: ComponentPreview;
+    }
   | { type: "remove"; origin: string; id: string };
 export type Response =
   | { profile: SiteProfile; createdRuleId?: string; error?: never }
