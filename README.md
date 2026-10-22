@@ -67,7 +67,7 @@ Set `TAYLR_HEADED=1` for a visible disposable browser. `TAYLR_SITES`, `TAYLR_COM
 
 ## Continuous verification
 
-[Verify](.github/workflows/verify.yml) runs on pushes and pull requests: cached npm install, type/lint/format checks, build and local E2E with two workers. New pushes cancel superseded runs. Download reports and diagnostics from the Actions run for seven days, and a successful unpacked extension for fourteen days. The workflow's manual run can also request live canary, Hide catalog or dark-mode catalog checks. It produces an installable artifact; Chrome Web Store publishing is a separate release step.
+[Verify](.github/workflows/verify.yml) runs on pushes to `main` and pull requests: cached npm install, type/lint/format checks, build and local E2E with two workers. New pushes cancel superseded runs. Download reports and diagnostics from the Actions run for seven days, and a successful unpacked extension for fourteen days. The workflow's manual run can also request live canary, Hide catalog or dark-mode catalog checks. It produces an installable artifact; Chrome Web Store publishing is a separate release step.
 
 Work on a focused branch, write failure scenarios before implementation, review the diff, and commit tested slices. Keep generated builds, reports, browser data, secrets and unrelated changes out of commits.
 
