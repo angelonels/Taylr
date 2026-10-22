@@ -8,7 +8,7 @@ on:
       live:
         description: Optional public-site verification after the local suite
         type: choice
-        options: [none, canary, catalog]
+        options: [none, canary, catalog, dark]
         default: none
 
 permissions:

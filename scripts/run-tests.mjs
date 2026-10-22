@@ -6,9 +6,9 @@ import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 
 const [mode = "local", ...args] = process.argv.slice(2);
-if (!["local", "canary", "catalog", "compare"].includes(mode)) {
+if (!["local", "canary", "catalog", "compare", "dark"].includes(mode)) {
   throw new Error(
-    "Usage: node scripts/run-tests.mjs local|canary|catalog|compare [Playwright options]",
+    "Usage: node scripts/run-tests.mjs local|canary|catalog|compare|dark [Playwright options]",
   );
 }
 const id = `${new Date().toISOString().replace(/[:.]/g, "-")}-${randomBytes(3).toString("hex")}`;
@@ -112,6 +112,7 @@ async function run(browserMode, cases) {
     TAYLR_RUN_ID: id,
     TAYLR_SCOPE: mode,
     TAYLR_HEADED: browserMode === "headed" ? "1" : "0",
+    TAYLR_DARK_SITES: mode === "dark" ? "1" : "0",
     TAYLR_LIVE_SITES: mode === "local" ? "0" : "1",
     TAYLR_CASES: process.env.TAYLR_CASES ?? cases?.join(",") ?? "",
     TAYLR_TRACE: process.env.TAYLR_TRACE ?? "failures",
@@ -137,14 +138,19 @@ async function run(browserMode, cases) {
     ),
   );
   const cli = ["node_modules/@playwright/test/cli.js", "test"];
-  if (mode !== "local")
+  if (mode === "dark") cli.push("tests/e2e/dark-sites.spec.ts");
+  else if (mode !== "local")
     cli.push("tests/e2e/hide.spec.ts", "--grep-invert", "Hide: click safety");
   const code = await execute(process.execPath, [...cli, ...args], env);
   let counts;
   if (mode !== "local") {
     const reportCode = await execute(
       process.execPath,
-      ["scripts/report-sites.mjs"],
+      [
+        mode === "dark"
+          ? "scripts/report-dark-sites.mjs"
+          : "scripts/report-sites.mjs",
+      ],
       env,
     );
     if (reportCode)
@@ -152,7 +158,13 @@ async function run(browserMode, cases) {
         `Report generation failed (${reportCode}); evidence at ${root}`,
       );
     counts = JSON.parse(
-      await readFile(join(root, "catalog-results.json"), "utf8"),
+      await readFile(
+        join(
+          root,
+          mode === "dark" ? "dark-results.json" : "catalog-results.json",
+        ),
+        "utf8",
+      ),
     ).counts;
   }
   const summary = {
