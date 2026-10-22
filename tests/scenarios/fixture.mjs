@@ -198,16 +198,14 @@ export async function runFixture(context, extensionId) {
     await expect(
       page.getByRole("region", { name: "Taylr Hide" }),
     ).toBeVisible();
+    const beforeRtl = await dock.locator(".dock").boundingBox();
     await page.evaluate(() => (document.documentElement.dir = "rtl"));
     const toolbarBox = await page
       .locator("taylr-tools")
       .locator(".dock")
       .boundingBox();
-    expect(
-      Math.abs(
-        toolbarBox.x + toolbarBox.width / 2 - page.viewportSize().width / 2,
-      ),
-    ).toBeLessThan(1);
+    expect(Math.abs(toolbarBox.x - beforeRtl.x)).toBeLessThan(1);
+    expect(toolbarBox.width).toBe(beforeRtl.width);
     await page.evaluate(() => (document.documentElement.dir = "ltr"));
     await page
       .getByRole("button", { name: "Move toolbar", exact: true })

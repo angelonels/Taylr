@@ -43,34 +43,6 @@ function Icon({
     </svg>
   );
 }
-function Mark() {
-  return (
-    <svg aria-hidden="true" className="mark" viewBox="0 0 32 32">
-      <defs>
-        <linearGradient
-          id="taylr-ribbon"
-          x1="8"
-          y1="4"
-          x2="26"
-          y2="30"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#e3dcff" />
-          <stop offset="1" stopColor="#9475f0" />
-        </linearGradient>
-      </defs>
-      <path d="M3 5h26l-6 7h-5v13l-7 5V12H3Z" fill="url(#taylr-ribbon)" />
-      <path d="M18 5h11l-6 7h-5Z" fill="#7c5bd1" />
-      <path d="M11 12h7v13l-7 5Z" fill="#c2b1ff" />
-      <path
-        d="M4 5.5h24M11.5 13v15"
-        fill="none"
-        stroke="#fff"
-        strokeOpacity=".4"
-      />
-    </svg>
-  );
-}
 function Tool({
   label,
   children,
@@ -123,8 +95,6 @@ function Dock({
     <motion.div
       ref={positionRef}
       className="dock"
-      data-edge={position.edge}
-      data-expanded={details}
       data-dragging={position.dragging}
       data-keyboard={keyboard}
       style={{ transform: position.transform }}
@@ -138,29 +108,36 @@ function Dock({
       }}
     >
       <div
-        className="bar flex items-center gap-1"
+        className="bar flex flex-col gap-1"
         role="toolbar"
         aria-label="Taylr"
+        aria-orientation="vertical"
       >
-        <Tool
-          id="move"
-          label="Move toolbar"
-          className="grip"
-          title="Drag to move · click to switch edge · arrow keys to move · Home to reset"
-          {...position.grip}
-        >
-          <Icon name="grip" />
-        </Tool>
-        <span className="brand" title="Taylr">
-          <Mark />
-        </span>
-        <span className="site min-w-0 flex-1">
-          <strong title={location.hostname}>{location.hostname}</strong>
-          <small>
-            {chrome.extension.inIncognitoContext ? "Private · " : ""}
-            {rules.length ? `${rules.length} hidden` : "Taylr"}
-          </small>
-        </span>
+        <div className="panel-header flex items-center gap-1">
+          <Tool
+            id="move"
+            label="Move toolbar"
+            className="grip"
+            title="Drag to move · click to switch edge · arrow keys to move · Home to reset"
+            {...position.grip}
+          >
+            <Icon name="grip" />
+          </Tool>
+          <span className="site min-w-0 flex-1">
+            <strong title={location.hostname}>{location.hostname}</strong>
+            <small>
+              {chrome.extension.inIncognitoContext ? "Private · " : ""}
+              {rules.length ? `Taylr · ${rules.length} hidden` : "Taylr"}
+            </small>
+          </span>
+          <Tool
+            id="close"
+            label="Close Taylr"
+            onClick={() => inspector.close()}
+          >
+            <Icon name="close" />
+          </Tool>
+        </div>
         <button
           id="hide"
           ref={hideRef}
@@ -185,6 +162,7 @@ function Dock({
           onClick={() => void inspector.undo()}
         >
           <Icon name="undo" />
+          <span>Undo</span>
         </Tool>
         <Tool
           id="rules-toggle"
@@ -198,10 +176,8 @@ function Dock({
           }}
         >
           <Icon name="rules" />
+          <span>Rules</span>
           {rules.length > 0 && <span className="count">{rules.length}</span>}
-        </Tool>
-        <Tool id="close" label="Close Taylr" onClick={() => inspector.close()}>
-          <Icon name="close" />
         </Tool>
       </div>
       {details && (
@@ -279,6 +255,12 @@ function Dock({
                   Restore all
                 </button>
               </div>
+              {!rules.length && (
+                <p className="empty">
+                  Choose Hide, then select an element on the page. Its rule will
+                  appear here.
+                </p>
+              )}
               <ul id="rules" className="m-0 list-none p-0">
                 {rules.map((rule) => (
                   <li key={rule.id} className="rule">

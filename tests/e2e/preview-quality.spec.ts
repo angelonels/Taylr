@@ -160,6 +160,12 @@ for (const scenario of [
           };
         });
       await dock.locator("#hide").click();
+      // Registration is asynchronous; target input belongs to the picker only
+      // after its pressed state confirms the real handlers are installed.
+      await expect(dock.locator("#hide")).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
       const storedRule = () =>
         bridge.evaluate(async () => {
           const key = "site:http://127.0.0.1:5173";

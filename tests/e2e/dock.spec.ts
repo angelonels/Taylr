@@ -45,11 +45,11 @@ test("Floating dock: preserve layout, trusted input, drag, keyboard movement, ru
       handle.y + handle.height / 2,
     );
     await page.mouse.down();
-    await page.mouse.move(handle.x - 110, handle.y - 180, { steps: 12 });
+    await page.mouse.move(handle.x - 110, handle.y + 180, { steps: 12 });
     await page.mouse.up();
     await expect
       .poll(async () => (await dock.locator(".dock").boundingBox()).y)
-      .toBeLessThan(initial.y - 80);
+      .toBeGreaterThan(initial.y + 80);
     await dock.locator("#hide").click();
     await expect(
       page.getByRole("region", { name: "Taylr Hide" }),

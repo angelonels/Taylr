@@ -30,10 +30,10 @@ for (const size of [16, 32, 48, 128]) {
     new Resvg(mark, { fitTo: { mode: "width", value: size } }).render().asPng(),
   );
   const active = mark
-    .replaceAll("#e3dcff", "#ffdfeb")
-    .replaceAll("#9475f0", "#ed688c")
-    .replaceAll("#7c5bd1", "#af3c67")
-    .replaceAll("#c2b1ff", "#ff9db8");
+    .replaceAll("#f4f2ec", "#ffdfeb")
+    .replaceAll("#b5b4aa", "#ed688c")
+    .replaceAll("#77796f", "#af3c67")
+    .replaceAll("#d4d3c9", "#ff9db8");
   await writeFile(
     `dist/icons/active-${size}.png`,
     new Resvg(active, { fitTo: { mode: "width", value: size } })
