@@ -8,7 +8,7 @@ import { evidencePath } from "../run-evidence.mjs";
 // legible text and a keyboard focus indicator, in both idle and picking states.
 test("Startup: focused Hide retains contrast on first open and reopen", async () => {
   const instance = await isolatedBrowser();
-  const { context, extensionId } = instance;
+  const { context, extensionId, worker } = instance;
   await context.tracing.start({
     screenshots: true,
     snapshots: true,
@@ -49,6 +49,19 @@ test("Startup: focused Hide retains contrast on first open and reopen", async ()
     await checkContrast();
     await captureEvidence(page, evidencePath("first-open.png"), {
       locator: dock.locator(".dock"),
+    });
+    // Keep the pointer outside expanding UI: selection deliberately hands focus
+    // to pointer targets, while this assertion isolates keyboard activation.
+    await page.mouse.move(1, 1);
+    // A slow access check must not lose keyboard focus while Hide is busy.
+    await worker.evaluate(() => {
+      const registered = chrome.scripting.getRegisteredContentScripts.bind(
+        chrome.scripting,
+      );
+      chrome.scripting.getRegisteredContentScripts = async (...args) => {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        return registered(...args);
+      };
     });
     await hide.press("Enter");
     await expect(hide).toHaveAttribute("aria-pressed", "true");

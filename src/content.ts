@@ -195,6 +195,7 @@ function createInspector(): Inspector {
   async function start() {
     if (busy || picker || !open || profile.paused) return;
     const revision = openRevision;
+    const restoreFocus = uiHost?.shadowRoot?.activeElement?.id === "hide";
     busy = true;
     status = "";
     error = false;
@@ -278,6 +279,17 @@ function createInspector(): Inspector {
       error = true;
     } finally {
       busy = false;
+      // Disabling the focused command during asynchronous registration can move
+      // focus to the body. Restore it unless the user chose another page control.
+      if (
+        restoreFocus &&
+        open &&
+        revision === openRevision &&
+        !profile.paused &&
+        (document.activeElement === document.body ||
+          document.activeElement === uiHost)
+      )
+        focusSerial++;
       publish();
     }
   }
