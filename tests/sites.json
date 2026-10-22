@@ -3,9 +3,9 @@
     "id": "youtube",
     "name": "YouTube",
     "category": "Video search · repeated web-component cards",
-    "url": "https://www.youtube.com/results?search_query=web+development",
+    "url": "https://www.youtube.com/results?search_query=web+development&sp=EgIQAQ%253D%253D",
     "status": "verified: 3/3 component contracts",
-    "notes": "Hide exactly one nested video card without opening or playing it; retain neighboring results.",
+    "notes": "Hide exactly one nested video card without opening or playing it; retain neighboring results. The observed Videos filter query keeps course-only search variants from replacing the declared video-card contract.",
     "components": [
       {
         "component": "Video result card",
@@ -739,7 +739,11 @@
         "keep": ".dcg-grapher",
         "purpose": "Hide a graph control without changing the graph bounds."
       }
-    ]
+    ],
+    "dark": {
+      "minTextSamples": 2,
+      "reason": "The initial canvas workspace has only two stable visible text labels; component and media contracts remain required."
+    }
   },
   {
     "id": "canva",
@@ -1052,6 +1056,10 @@
     "invariant": {
       "selector": "[data-testid=\"tla-main-menu\"]",
       "attribute": "aria-expanded"
+    },
+    "dark": {
+      "minTextSamples": 2,
+      "reason": "The initial canvas workspace has only two stable visible text labels; component and media contracts remain required."
     }
   },
   {
@@ -1267,5 +1275,169 @@
       "selector": "button[data-test=\"mainMenu\"]",
       "attribute": "aria-expanded"
     }
+  },
+  {
+    "id": "wikipedia",
+    "name": "Wikipedia",
+    "category": "Encyclopedia · dense tables and article navigation",
+    "url": "https://en.wikipedia.org/wiki/Computer",
+    "status": "verified: 3/3 Hide component contracts; 2026-10-23 dark-mode branch",
+    "notes": "Dark-mode coverage adds sampled text contrast, theme reversal, media filters and reload persistence.",
+    "components": [
+      {
+        "id": "primary",
+        "component": "Article title",
+        "target": "#firstHeading",
+        "keep": "#mw-panel-toc",
+        "purpose": "Hide and restore the article title without activating links or changing independent content."
+      },
+      {
+        "id": "contents",
+        "component": "Contents navigation",
+        "target": "#mw-panel-toc",
+        "keep": "#firstHeading",
+        "purpose": "Hide and restore the contents navigation without activating links or changing independent content."
+      },
+      {
+        "id": "table",
+        "component": "Hardware table",
+        "target": "table.wikitable",
+        "keep": "#firstHeading",
+        "purpose": "Hide and restore the hardware table without activating links or changing independent content.",
+        "targetIndex": 0
+      }
+    ]
+  },
+  {
+    "id": "mdn",
+    "name": "MDN",
+    "category": "Technical reference · two sidebars and custom elements",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS",
+    "status": "verified: 3/3 Hide component contracts; 2026-10-23 dark-mode branch",
+    "notes": "Dark-mode coverage adds sampled text contrast, theme reversal, media filters and reload persistence.",
+    "components": [
+      {
+        "id": "primary",
+        "component": "Reference title",
+        "target": "main h1",
+        "keep": "#main-sidebar",
+        "purpose": "Hide and restore the reference title without activating links or changing independent content."
+      },
+      {
+        "id": "contents",
+        "component": "Article contents",
+        "target": ".reference-toc",
+        "keep": "main h1",
+        "purpose": "Hide and restore the article contents without activating links or changing independent content."
+      },
+      {
+        "id": "sidebar",
+        "component": "Reference navigation",
+        "target": "#main-sidebar",
+        "keep": "main h1",
+        "purpose": "Hide and restore the reference navigation without activating links or changing independent content."
+      }
+    ]
+  },
+  {
+    "id": "hackernews",
+    "name": "Hacker News",
+    "category": "Legacy tables · repeated story rows and links",
+    "url": "https://news.ycombinator.com/",
+    "status": "verified: 3/3 Hide component contracts; 2026-10-23 dark-mode branch",
+    "notes": "Dark-mode coverage adds sampled text contrast, theme reversal, media filters and reload persistence.",
+    "components": [
+      {
+        "id": "primary",
+        "component": "Story row",
+        "target": "tr.athing",
+        "keep": "tr.athing",
+        "purpose": "Hide and restore the story row without activating links or changing independent content.",
+        "keepIndex": 1,
+        "targetIndex": 0,
+        "identity": {
+          "selector": ".titleline > a",
+          "attribute": "href"
+        }
+      },
+      {
+        "id": "brand",
+        "component": "Header brand",
+        "target": ".hnname",
+        "keep": "tr.athing",
+        "purpose": "Hide and restore the header brand without activating links or changing independent content.",
+        "keepIndex": 0
+      },
+      {
+        "id": "more",
+        "component": "Pagination link",
+        "target": ".morelink",
+        "keep": "tr.athing",
+        "purpose": "Hide and restore the pagination link without activating links or changing independent content.",
+        "keepIndex": 0
+      }
+    ]
+  },
+  {
+    "id": "arxiv",
+    "name": "arXiv",
+    "category": "Scientific publication · mathematics, author links and abstract",
+    "url": "https://arxiv.org/abs/1706.03762",
+    "status": "verified: 3/3 Hide component contracts; 2026-10-23 dark-mode branch",
+    "notes": "Dark-mode coverage adds sampled text contrast, theme reversal, media filters and reload persistence.",
+    "components": [
+      {
+        "id": "primary",
+        "component": "Paper title",
+        "target": "h1.title",
+        "keep": ".authors",
+        "purpose": "Hide and restore the paper title without activating links or changing independent content."
+      },
+      {
+        "id": "authors",
+        "component": "Author links",
+        "target": ".authors",
+        "keep": "h1.title",
+        "purpose": "Hide and restore the author links without activating links or changing independent content."
+      },
+      {
+        "id": "abstract",
+        "component": "Paper abstract",
+        "target": "blockquote.abstract",
+        "keep": "h1.title",
+        "purpose": "Hide and restore the paper abstract without activating links or changing independent content."
+      }
+    ]
+  },
+  {
+    "id": "gutenberg",
+    "name": "Project Gutenberg",
+    "category": "Book catalog · long summary, downloads and metadata table",
+    "url": "https://www.gutenberg.org/ebooks/84",
+    "status": "verified: 3/3 Hide component contracts; 2026-10-23 dark-mode branch",
+    "notes": "Dark-mode coverage adds sampled text contrast, theme reversal, media filters and reload persistence.",
+    "components": [
+      {
+        "id": "primary",
+        "component": "Book title",
+        "target": "#book_title",
+        "keep": ".download-section",
+        "purpose": "Hide and restore the book title without activating links or changing independent content."
+      },
+      {
+        "id": "downloads",
+        "component": "Download formats",
+        "target": ".download-section",
+        "keep": "#book_title",
+        "purpose": "Hide and restore the download formats without activating links or changing independent content."
+      },
+      {
+        "id": "metadata",
+        "component": "Book metadata",
+        "target": "#about_book_table",
+        "keep": "#book_title",
+        "purpose": "Hide and restore the book metadata without activating links or changing independent content."
+      }
+    ]
   }
 ]

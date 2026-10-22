@@ -1,13 +1,21 @@
-import { request, requestResult, type SiteProfile } from "./model";
+import {
+  extensionReloadMessage,
+  request,
+  requestResult,
+  type SiteProfile,
+} from "./model";
 import { capturePreview, componentText, summarize } from "./preview";
 import { canSelect, selectorFor } from "./selector";
-import type { Inspector, InspectorState } from "./inspector";
+import type { Inspector, InspectorState, ThemeStatus } from "./inspector";
 
 if (!window.__taylr) window.__taylr = createInspector();
 
 function createInspector(): Inspector {
   let profile: SiteProfile = { version: 1, origin: location.origin, rules: [] };
   let profileUpdates = 0;
+  let themeStatus: ThemeStatus = "off";
+  let themeRevision = 0;
+  let themeError = "";
   let open = false;
   let picker: AbortController | null = null;
   let selected: Element | null = null;
@@ -31,7 +39,7 @@ function createInspector(): Inspector {
   highlightHost.style.cssText =
     "all:initial!important;position:fixed!important;inset:0!important;pointer-events:none!important;z-index:2147483646!important;";
   const shadow = highlightHost.attachShadow({ mode: "open" });
-  shadow.innerHTML = `<style>:host{color-scheme:dark}.outline{position:fixed;inset:0 auto auto 0;box-sizing:border-box;border:2px solid #ff8ba2;background:rgba(255,94,126,.07);box-shadow:0 0 0 1px rgba(40,12,26,.55),0 0 18px rgba(255,94,126,.13);border-radius:6px;pointer-events:none}.outline[hidden]{display:none}</style><div class="outline" hidden></div>`;
+  shadow.innerHTML = `<style class="darkreader">:host{color-scheme:dark}.outline{position:fixed;inset:0 auto auto 0;box-sizing:border-box;border:2px solid #ff8ba2;background:rgba(255,94,126,.07);box-shadow:0 0 0 1px rgba(40,12,26,.55),0 0 18px rgba(255,94,126,.13);border-radius:6px;pointer-events:none}.outline[hidden]{display:none}</style><div class="outline" hidden></div>`;
   const outline = shadow.querySelector<HTMLElement>(".outline")!;
   const style = document.createElement("style");
   style.dataset.taylr = "rules";
@@ -66,6 +74,7 @@ function createInspector(): Inspector {
       open,
       picking: !!picker,
       busy,
+      themeStatus,
       profile,
       hasHidden: sessionIds.length > 0,
       canUndo: sessionIds.some((id) =>
@@ -88,8 +97,43 @@ function createInspector(): Inspector {
     if (document.documentElement && !style.isConnected)
       document.documentElement.append(style);
   }
+  function syncTheme() {
+    const revision = ++themeRevision;
+    themeStatus = profile.darkMode && !profile.paused ? "applying" : "off";
+    publish();
+    void chrome.runtime
+      .sendMessage({ type: "theme-sync" })
+      .then((result) => {
+        if (revision !== themeRevision) return;
+        themeStatus = result?.status ?? "error";
+        const failure =
+          result?.error || (!result?.status ? extensionReloadMessage : "");
+        if (failure) {
+          themeError = failure;
+          status = failure;
+          error = true;
+        } else {
+          if (themeError && status === themeError) {
+            status = "";
+            error = false;
+          }
+          themeError = "";
+        }
+        publish();
+      })
+      .catch(() => {
+        if (revision !== themeRevision) return;
+        themeStatus = "error";
+        themeError = "Could not update dark mode. Reload to try again.";
+        status = themeError;
+        error = true;
+        publish();
+      });
+  }
+  matchMedia("(forced-colors: active)").addEventListener("change", syncTheme);
   function apply(next: SiteProfile) {
     profile = next;
+    syncTheme();
     if (profile.paused) stop();
     mountStyle();
     const css = (profile.paused ? [] : profile.rules)
@@ -188,8 +232,8 @@ function createInspector(): Inspector {
     previousFocus = document.activeElement;
     open = true;
     openRevision++;
-    status = "";
-    error = false;
+    status = themeError;
+    error = !!themeError;
     publish();
   }
   async function start() {
@@ -395,6 +439,27 @@ function createInspector(): Inspector {
       publish();
     }
   }
+  async function setDarkMode(darkMode: boolean) {
+    if (busy) return;
+    busy = true;
+    status = "";
+    error = false;
+    publish();
+    try {
+      await request({
+        type: "set-dark-mode",
+        origin: location.origin,
+        darkMode,
+      });
+    } catch (cause) {
+      status =
+        cause instanceof Error ? cause.message : "Could not save dark mode.";
+      error = true;
+    } finally {
+      busy = false;
+      publish();
+    }
+  }
   async function setPaused(paused: boolean) {
     if (busy) return;
     busy = true;
@@ -534,6 +599,7 @@ function createInspector(): Inspector {
     child,
     restore,
     setPaused,
+    setDarkMode,
     openAccessSettings,
   };
 }

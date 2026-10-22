@@ -9,8 +9,58 @@ for (const [entry, extension] of [
   ["background", "ts"],
   ["content", "ts"],
   ["dock", "tsx"],
+  ["theme", "ts"],
 ])
   await build({
+    plugins: [
+      {
+        name: "darkreader-private-message-bus",
+        transform(code, id) {
+          if (!id.endsWith("/darkreader/darkreader.mjs")) return;
+          if (
+            !code.includes(
+              "const nativeSendMessage = chrome.runtime.sendMessage;",
+            )
+          )
+            throw new Error(
+              "Review the Dark Reader message adapter before upgrading.",
+            );
+          // The embedded API otherwise replaces native Chrome methods and loses
+          // Promise return values. Give this vendor module its own lexical bus.
+          const cleanup =
+            'removeNode(root.querySelector(".darkreader--override"));';
+          if (!code.includes(cleanup))
+            throw new Error(
+              "Review Dark Reader shadow cleanup before upgrading.",
+            );
+          // 4.9.133 leaves its inversion stylesheet in open shadow roots after
+          // disable. Complete the same cleanup while the engine owns the roots.
+          code = code.replace(
+            cleanup,
+            cleanup +
+              '\nremoveNode(root.querySelector(".darkreader--invert"));',
+          );
+          const update =
+            "function update() {\n        const details = manager.details({secondRound: true});";
+          code = code.replaceAll("\r\n", "\n");
+          if (!code.includes(update))
+            throw new Error(
+              "Review Dark Reader manager lifecycle before upgrading.",
+            );
+          // A delayed DOM-ready callback can run after destroy and recreate a
+          // sync stylesheet (observed on Google Maps). Only the current owner
+          // may render; an old manager must not resurrect a disabled theme.
+          code = code.replace(
+            update,
+            "function update() {\n        if (styleManagers.get(element) !== manager) return;\n        const details = manager.details({secondRound: true});",
+          );
+          return {
+            code: "const chrome = { runtime: {} };\n" + code,
+            map: null,
+          };
+        },
+      },
+    ],
     build: {
       outDir: "dist",
       emptyOutDir: false,
@@ -66,4 +116,10 @@ await writeFile(
     null,
     2,
   ),
+);
+
+await mkdir("dist/licenses", { recursive: true });
+await writeFile(
+  "dist/licenses/darkreader.txt",
+  await readFile("node_modules/darkreader/LICENSE"),
 );

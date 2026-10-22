@@ -1,6 +1,6 @@
 {
   "name": "taylr",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,7 +13,8 @@
     "test:report": "node scripts/report-sites.mjs",
     "lint": "oxlint --type-aware --max-warnings 0 --report-unused-disable-directives src scripts tests playwright.config.ts vite.config.ts",
     "test:canary": "node scripts/run-tests.mjs canary",
-    "test:compare": "node scripts/run-tests.mjs compare"
+    "test:compare": "node scripts/run-tests.mjs compare",
+    "test:dark": "node scripts/run-tests.mjs dark"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
@@ -30,6 +31,7 @@
     "vite": "^7.1.12"
   },
   "dependencies": {
+    "darkreader": "4.9.133",
     "motion": "^14.5.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
