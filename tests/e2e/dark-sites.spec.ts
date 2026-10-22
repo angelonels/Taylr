@@ -2,6 +2,7 @@ import { test, expect as baseExpect } from "@playwright/test";
 const expect = baseExpect.configure({ timeout: 15000 });
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import { observeThemeResources } from "../theme-resources";
 import { isolatedBrowser } from "../isolated-browser.mjs";
 import { driver, openDock } from "../dock-actions.mjs";
 import {
@@ -41,6 +42,7 @@ for (const path of [
   "tests/isolated-browser.mjs",
   "tests/dock-actions.mjs",
   "tests/run-evidence.mjs",
+  "tests/theme-resources.ts",
   "dist/theme.js",
   "dist/background.js",
   "dist/content.js",
@@ -79,6 +81,7 @@ for (const site of sites.filter(
     try {
       instance = await isolatedBrowser(site, { productionPermissions: true });
       const { context, extensionId } = instance;
+      const resources = observeThemeResources(context);
       record.environment = instance.environment;
       record.runId = process.env.TAYLR_RUN_ID;
       await context.tracing.start({
@@ -212,7 +215,8 @@ for (const site of sites.filter(
           while (node) {
             const s = getComputedStyle(node);
             if (
-              s.backgroundImage !== "none" ||
+              (!bg && s.backgroundImage !== "none") ||
+              s.mixBlendMode !== "normal" ||
               Number(s.opacity) < 1 ||
               s.filter !== "none"
             )
@@ -242,16 +246,10 @@ for (const site of sites.filter(
           const parts: string[] = [];
           let node: Element | null = el;
           while (node) {
-            const style =
-              node
-                .getAttribute("style")
-                ?.replace(/--darkreader-[^:;]+:[^;]+;?/g, "")
-                .trim() ?? "";
             parts.push(
               [
                 node.localName,
                 node.getAttribute("class"),
-                style,
                 node.getAttribute("aria-selected"),
               ].join("|"),
             );
@@ -291,12 +289,15 @@ for (const site of sites.filter(
       const baseline = await page.evaluate(
         () => window.__darkVerification.before,
       );
+      record.before = baseline;
       expect(baseline.length, "Visible text samples").toBeGreaterThanOrEqual(
         minimum,
       );
       const dock = await openDock(context, bridge, page);
       const dark = dock.locator("#dark-mode");
       phase = "theme";
+      resources.resetQuietWindow();
+      const observationStarted = Date.now();
       await dark.click();
       await expect(dark).toHaveAttribute("aria-pressed", "true");
       await expect(dark).toContainText("On", { timeout: 20000 });
@@ -311,14 +312,13 @@ for (const site of sites.filter(
           sample.connected &&
           sample.visible &&
           (baseline[index].contrast ?? 0) >= 4.5 &&
-          sample.contrast !== null &&
-          sample.contrast < 4.45
+          (sample.contrast === null || sample.contrast < 4.45)
             ? [{ before: baseline[index], after: sample }]
             : [],
         );
       let after: Sample[] = [];
-      let previousColors = "";
-      let stableColors = 0;
+      let previous: Sample[] = [];
+      const stableColors = baseline.map(() => 0);
       await expect
         .poll(
           async () => {
@@ -327,19 +327,29 @@ for (const site of sites.filter(
                 window.__darkVerification.measure,
               ),
             );
-            const colors = JSON.stringify(
-              after.map((sample) => [
-                sample.connected,
-                sample.visible,
-                sample.color,
-                sample.background,
-                sample.contrast,
-              ]),
-            );
-            stableColors = colors === previousColors ? stableColors + 1 : 0;
-            previousColors = colors;
+            after.forEach((sample, index) => {
+              const old = previous[index];
+              const same =
+                old &&
+                sample.connected &&
+                sample.visible &&
+                old.color === sample.color &&
+                old.background === sample.background &&
+                old.contrast === sample.contrast;
+              stableColors[index] = same ? stableColors[index] + 1 : 0;
+            });
+            previous = after;
+            record.after = after;
+            record.resources = resources.snapshot();
+            record.observationMs = Date.now() - observationStarted;
+            record.settledSamples = stableColors.filter(
+              (count) => count >= 3,
+            ).length;
             return {
-              settled: stableColors >= 3,
+              settled:
+                Number(record.observationMs) >= 8000 &&
+                resources.quiet() &&
+                Number(record.settledSamples) >= minimum,
               regressions: readableRegressions(after),
             };
           },
@@ -439,6 +449,47 @@ for (const site of sites.filter(
               sample.background === baseline[index].background)) &&
           sample.text === baseline[index].text,
       );
+      const changed = baseline.map(
+        (sample, index) =>
+          after[index].connected &&
+          after[index].visible &&
+          (after[index].color !== sample.color ||
+            after[index].background !== sample.background),
+      );
+      const changedRestored = restored.filter(
+        (sample, index) =>
+          changed[index] &&
+          sample.connected &&
+          sample.visible &&
+          sample.text === baseline[index].text &&
+          sample.color === baseline[index].color &&
+          sample.background === baseline[index].background,
+      ).length;
+      record.changedRestorationSamples = changedRestored;
+      if (changed.some(Boolean))
+        expect(
+          changedRestored,
+          "Changed theme samples restore",
+        ).toBeGreaterThan(0);
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const roots: (Document | ShadowRoot)[] = [document];
+            for (let n = 0; n < roots.length; n++)
+              for (const el of roots[n].querySelectorAll("*"))
+                if (
+                  el.shadowRoot &&
+                  !["taylr-tools", "taylr-highlight"].includes(el.localName)
+                )
+                  roots.push(el.shadowRoot);
+            return roots.flatMap((root) => [
+              ...root.querySelectorAll(
+                "style.darkreader,meta[name=darkreader]",
+              ),
+            ]).length;
+          }),
+        )
+        .toBe(0);
       record.restorationSamples = stable.length;
       record.excludedRestorationSamples = baseline.length - stable.length;
       expect(
