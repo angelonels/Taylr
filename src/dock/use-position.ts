@@ -129,7 +129,7 @@ export function usePosition(open: boolean) {
       window.visualViewport?.removeEventListener("scroll", fit);
       cancelAnimation();
     };
-  }, [open]);
+  }, [open, x, y]);
   function pointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
     if (!event.nativeEvent.isTrusted || event.button !== 0) return;
     event.preventDefault();

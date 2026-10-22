@@ -1,6 +1,6 @@
+import { evidencePath } from "../run-evidence.mjs";
 import { expect } from "@playwright/test";
 import { driver, openDock } from "../dock-actions.mjs";
-import { writeFile } from "node:fs/promises";
 
 export async function runFixture(context, extensionId) {
   await context.tracing.start({
@@ -94,12 +94,15 @@ export async function runFixture(context, extensionId) {
     });
     expect(toolbarType.font).not.toContain("Georgia");
     expect(toolbarType.size).toBe("13px");
-    await page.screenshot({ path: "output/playwright/picker-active.png" });
+    await page.screenshot({ path: evidencePath("picker-active.png") });
 
-    await page.locator("taylr-tools").locator(".dock").screenshot({
-      path: "output/playwright/picker-preview.png",
-      animations: "disabled",
-    });
+    await page
+      .locator("taylr-tools")
+      .locator(".dock")
+      .screenshot({
+        path: evidencePath("picker-preview.png"),
+        animations: "disabled",
+      });
     await dock.locator("#cancel").click();
     await expect(dock.locator("#hide")).toBeFocused();
     await expect(page.getByRole("region", { name: "Taylr Hide" })).toHaveCount(
@@ -309,7 +312,7 @@ export async function runFixture(context, extensionId) {
     await expect(page.locator("#distraction")).toBeHidden();
     await expect(page.locator("#keep")).toBeVisible();
     await expect(page.locator("#click-count")).toHaveText("0");
-    await page.screenshot({ path: "output/playwright/hidden.png" });
+    await page.screenshot({ path: evidencePath("hidden.png") });
     await page.getByRole("button", { name: "Done", exact: true }).click();
     await page.reload();
     await expect(page.locator("#distraction")).toBeHidden();
@@ -461,6 +464,6 @@ export async function runFixture(context, extensionId) {
     expect(errors).toEqual([]);
   } finally {
     if (ownsProfile) await restore().catch(() => {});
-    await context.tracing.stop({ path: "output/playwright/fixture-trace.zip" });
+    await context.tracing.stop({ path: evidencePath("fixture-trace.zip") });
   }
 }

@@ -1,3 +1,4 @@
+import { evidencePath } from "../run-evidence.mjs";
 import { test, expect } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
 import { driver, openDock, invokeAction } from "../dock-actions.mjs";
@@ -91,14 +92,14 @@ test("Floating dock: preserve layout, trusted input, drag, keyboard movement, ru
     await openDock(context, bridge, page);
     await expect(dock.locator("#hide")).toBeVisible();
     expect(await page.locator("taylr-tools").count()).toBe(1);
-    await page.screenshot({ path: "output/playwright/floating-dock.png" });
+    await page.screenshot({ path: evidencePath("floating-dock.png") });
     await dock
       .locator(".dock")
-      .screenshot({ path: "output/playwright/dock-preview.png" });
+      .screenshot({ path: evidencePath("dock-preview.png") });
     await invokeAction(context, bridge, page);
     await expect(page.getByRole("toolbar", { name: "Taylr" })).toHaveCount(0);
   } finally {
-    await context.tracing.stop({ path: "output/playwright/dock-trace.zip" });
+    await context.tracing.stop({ path: evidencePath("dock-trace.zip") });
     await instance.close();
   }
 });

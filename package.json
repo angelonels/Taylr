@@ -1,16 +1,19 @@
 {
   "name": "taylr",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && node scripts/build.mjs",
     "dev": "vite --host 127.0.0.1",
-    "test:e2e": "playwright test",
-    "check": "tsc --noEmit",
+    "test:e2e": "node scripts/run-tests.mjs local",
+    "check": "tsc --noEmit && npm run lint",
     "format:check": "prettier --check src scripts tests notice.html playwright.config.ts vite.config.ts tsconfig.json",
-    "test:live": "TAYLR_LIVE_SITES=1 playwright test",
-    "test:report": "node scripts/report-sites.mjs"
+    "test:live": "node scripts/run-tests.mjs catalog",
+    "test:report": "node scripts/report-sites.mjs",
+    "lint": "oxlint --type-aware --max-warnings 0 --report-unused-disable-directives src scripts tests playwright.config.ts vite.config.ts",
+    "test:canary": "node scripts/run-tests.mjs canary",
+    "test:compare": "node scripts/run-tests.mjs compare"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
@@ -19,6 +22,8 @@
     "@types/chrome": "^0.1.24",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "oxlint": "^1.89.0",
+    "oxlint-tsgolint": "^7.0.2004",
     "prettier": "^3.9.10",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",

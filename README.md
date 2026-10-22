@@ -17,7 +17,7 @@ For a manual installation, open `chrome://extensions`, enable Developer mode, ch
 
 Open a website and click Taylr’s Chrome toolbar icon. The floating dock opens without changing the page width. Allow access to that site, then choose **Hide** and click an element. Use Parent/Child or ↑/↓ to refine selection; Enter hides it. **Cancel** or Escape exits selection, **Done** finishes, and **Close** dismisses the dock. Escape from the compact dock also closes it. **Undo** reverses your own changes from the current selection session.
 
-Drag the grip to move the dock, click it to switch edges, or focus it and use arrow keys (Home resets its position). **Rules** shows hidden components with local visual previews and individual Restore controls. **Restore all** reveals everything hidden on that site. Captures contain the visible portion of the component; a label remains when Chrome cannot capture a preview.
+Drag the grip to move the dock, click it to switch edges, or focus it and use arrow keys (Home resets its position). **Rules** shows hidden components with local visual previews and individual Restore controls. **Restore all** reveals everything hidden on that site. Captures contain the visible portion of the component; a crisp text preview remains when Chrome cannot capture pixels. Expand a captured preview to inspect it.
 
 Rules apply across pages of the same exact origin and remain on this device. Browser internal pages and the Chrome Web Store cannot be edited. Shadow-root interiors and iframe interiors are not supported yet. Site redesigns can invalidate selectors; Restore is always available.
 
@@ -25,13 +25,16 @@ Rules apply across pages of the same exact origin and remain on this device. Bro
 
 ```sh
 npx playwright install chromium
+npm run check
+npm run format:check
 npm run build
 npm run test:e2e
+npm run test:canary -- --workers=2
 npm run test:live -- --workers=2
-npm run test:report
+npm run test:compare -- --workers=1
 ```
 
-Tests launch disposable Playwright Chromium with temporary data and never connect to personal Chrome profiles. No CDP setup or permission approvals are needed. For a visible disposable browser, set `TAYLR_HEADED=1`. Filter by `TAYLR_SITES` and `TAYLR_COMPONENTS` when investigating a recorded failure. Evidence stays under `output/playwright/`, outside Git.
+Tests launch disposable Playwright Chromium with temporary data and never connect to personal Chrome profiles. No CDP setup or permission approvals are needed. For a visible disposable browser, set `TAYLR_HEADED=1`. Filter by `TAYLR_SITES` and `TAYLR_COMPONENTS` when investigating a recorded failure. Each run keeps its own report and evidence under `output/playwright/runs/`, outside Git. The wrapper exits 2 for incomplete external access coverage and 1 for defects, stale/missing evidence, or infrastructure failures.
 
 The [component regression matrix](docs/site-test-matrix.md) explains the deliberate site/component choices and distinguishes verified contracts, access blocks, and pending validation. See [testing](docs/testing.md) for the acceptance contract and [foundation decisions](docs/decisions.md) for scope and tradeoffs.
 

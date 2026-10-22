@@ -13,8 +13,8 @@ export interface InspectorState {
   focusSerial: number;
 }
 export interface Inspector {
-  getSnapshot(): InspectorState;
-  subscribe(listener: () => void): () => void;
+  getSnapshot(this: void): InspectorState;
+  subscribe(this: void, listener: () => void): () => void;
   setHost(host: HTMLElement): void;
   toggle(): void;
   close(): void;

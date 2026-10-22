@@ -11,7 +11,7 @@ import { motion } from "motion/react";
 import type { Inspector } from "./inspector";
 import { ComponentPreview } from "./dock/component-preview";
 import { usePosition } from "./dock/use-position";
-import css from "./dock.css?inline";
+import css from "./tailwind.css?inline";
 
 function Icon({
   name,
@@ -97,7 +97,7 @@ function Dock({
   const [keyboard, setKeyboard] = useState(false);
   const hideRef = useRef<HTMLButtonElement>(null),
     rulesRef = useRef<HTMLButtonElement>(null);
-  const position = usePosition(state.open);
+  const { ref: positionRef, ...position } = usePosition(state.open);
   const previousFocusSerial = useRef(state.focusSerial);
   useEffect(() => {
     if (state.open) {
@@ -105,6 +105,8 @@ function Dock({
       hideRef.current?.focus({ preventScroll: true });
     } else {
       if (host.matches(":popover-open")) host.hidePopover();
+      // Synchronize disclosure state with the external inspector closing.
+      // oxlint-disable-next-line react/set-state-in-effect
       setRulesOpen(false);
     }
   }, [state.open, host]);
@@ -119,7 +121,7 @@ function Dock({
   const details = state.picking || rulesOpen || state.error;
   return (
     <motion.div
-      ref={position.ref}
+      ref={positionRef}
       className="dock"
       data-edge={position.edge}
       data-expanded={details}
@@ -205,17 +207,14 @@ function Dock({
       {details && (
         <div className="details">
           {state.picking && (
-            <section
-              role="region"
-              aria-label="Taylr Hide"
-              className="inspector"
-            >
+            <section aria-label="Taylr Hide" className="inspector">
               <div className="flex items-center justify-between gap-3">
                 <span className="mode">
                   <span />
                   Hide elements
                 </span>
                 <button
+                  type="button"
                   id={state.hasHidden ? "done" : "cancel"}
                   aria-label={state.hasHidden ? "Done" : "Cancel"}
                   onClick={() => inspector.stop()}
@@ -272,6 +271,7 @@ function Dock({
                   {rules.length ? `${rules.length} hidden` : "Nothing hidden"}
                 </h2>
                 <button
+                  type="button"
                   id="restore"
                   disabled={!rules.length || state.busy}
                   onClick={() => void inspector.restore()}
@@ -281,33 +281,35 @@ function Dock({
               </div>
               <ul id="rules" className="m-0 list-none p-0">
                 {rules.map((rule) => (
-                  <li key={rule.id} className="rule flex items-center gap-3">
-                    <div className="rule-content min-w-0 flex-1">
-                      <ComponentPreview rule={rule} />
-                      <span className="rule-label">{rule.label}</span>
+                  <li key={rule.id} className="rule">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <span className="rule-label min-w-0 flex-1">
+                        {rule.label}
+                      </span>
+                      <Tool
+                        label={`Restore ${rule.label}`}
+                        disabled={state.busy}
+                        onClick={() => void inspector.restore(rule.id)}
+                      >
+                        <Icon name="restore" />
+                        <span>Restore</span>
+                      </Tool>
                     </div>
-                    <Tool
-                      label={`Restore ${rule.label}`}
-                      disabled={state.busy}
-                      onClick={() => void inspector.restore(rule.id)}
-                    >
-                      <Icon name="restore" />
-                    </Tool>
+                    <ComponentPreview rule={rule} />
                   </li>
                 ))}
               </ul>
             </section>
           )}
           {state.status && (
-            <p
+            <output
               id="status"
               className="status"
-              role="status"
               aria-live="polite"
               data-error={state.error}
             >
               {state.status}
-            </p>
+            </output>
           )}
         </div>
       )}
@@ -332,5 +334,4 @@ if (inspector) {
     inspector.setHost(host);
     createRoot(mount).render(<Dock inspector={inspector} host={host} />);
   }
-  inspector.toggle();
 }

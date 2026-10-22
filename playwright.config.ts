@@ -1,13 +1,15 @@
 import { defineConfig } from "@playwright/test";
+import { evidencePath } from "./tests/run-evidence.mjs";
 export default defineConfig({
   testDir: "tests/e2e",
   workers: 1,
   fullyParallel: true,
   timeout: 300000,
-  outputDir: "output/playwright/results",
+  outputDir: evidencePath("results"),
   reporter: [
     ["list"],
-    ["html", { outputFolder: "output/playwright/report", open: "never" }],
+    ["json", { outputFile: evidencePath("runner-results.json") }],
+    ["html", { outputFolder: evidencePath("report"), open: "never" }],
   ],
   use: {
     trace: "off",
@@ -18,6 +20,6 @@ export default defineConfig({
   webServer: {
     command: "npm run dev",
     url: "http://127.0.0.1:5173/tests/fixture.html",
-    reuseExistingServer: true,
+    reuseExistingServer: false,
   },
 });

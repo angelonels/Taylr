@@ -1,3 +1,10 @@
+import { evidencePath } from "../run-evidence.mjs";
+declare global {
+  interface Window {
+    flipFrames: number[];
+  }
+}
+
 import { test, expect } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
 import { driver, openDock } from "../dock-actions.mjs";
@@ -20,11 +27,11 @@ test("Keyboard grip: instant flip and no press scale", async () => {
     await dock.locator("#move").focus();
     await page.evaluate(() => {
       const root = document.querySelector("taylr-tools").shadowRoot;
-      (window as any).flipFrames = [];
+      window.flipFrames = [];
       root.querySelector("#move").addEventListener("click", () => {
         let frames = 0;
         const record = () => {
-          (window as any).flipFrames.push(
+          window.flipFrames.push(
             root.querySelector(".dock").getBoundingClientRect().y,
           );
           if (++frames < 4) requestAnimationFrame(record);
@@ -34,11 +41,9 @@ test("Keyboard grip: instant flip and no press scale", async () => {
     });
     await page.keyboard.press("Enter");
     await expect
-      .poll(() => page.evaluate(() => (window as any).flipFrames.length))
+      .poll(() => page.evaluate(() => window.flipFrames.length))
       .toBe(4);
-    const frames = await page.evaluate(
-      () => (window as any).flipFrames as number[],
-    );
+    const frames = await page.evaluate(() => window.flipFrames);
     expect(frames.every((y) => Math.abs(y - 16) < 0.1)).toBe(true);
     await page.keyboard.down("Space");
     expect(
@@ -49,7 +54,7 @@ test("Keyboard grip: instant flip and no press scale", async () => {
     await page.keyboard.up("Space");
   } finally {
     await context.tracing.stop({
-      path: "output/playwright/dock-keyboard-motion-trace.zip",
+      path: evidencePath("dock-keyboard-motion-trace.zip"),
     });
     await instance.close();
   }
@@ -127,10 +132,10 @@ test("Dock layout: six widths, native 200% zoom, edge expansion and reduced moti
     await page.keyboard.press("Home");
     await expect(dock.locator("#close")).toBeInViewport();
     // Full viewport evidence avoids element-clip coordinates under native zoom.
-    await page.screenshot({ path: "output/playwright/dock-zoom-reduced.png" });
+    await page.screenshot({ path: evidencePath("dock-zoom-reduced.png") });
   } finally {
     await context.tracing.stop({
-      path: "output/playwright/dock-layout-trace.zip",
+      path: evidencePath("dock-layout-trace.zip"),
     });
     await instance.close();
   }

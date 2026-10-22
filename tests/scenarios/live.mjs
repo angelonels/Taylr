@@ -1,32 +1,94 @@
 import { expect as baseExpect } from "@playwright/test";
 const expect = baseExpect.configure({ timeout: 15000 });
-import { driver, openDock } from "../dock-actions.mjs";
+import { captureEvidence } from "../capture.mjs";
+import { driver, openDock, tabForPage } from "../dock-actions.mjs";
 import { mkdir, writeFile, rm } from "node:fs/promises";
+import {
+  classifyFailure,
+  evidencePath,
+  inspectAccess,
+  VerificationError,
+} from "../run-evidence.mjs";
 
 // A target must pass baseline validation. Never replace a failed selector with a broader guess.
 export async function runLiveSite(context, extensionId, site) {
   const page = await context.newPage();
   const panel = await driver(context, extensionId);
+  // Read-only, bounded breadcrumbs distinguish page-driven focus/layout changes from picker defects.
+  await page.addInitScript(() => {
+    const events = [];
+    Object.defineProperty(window, "__taylrVerificationEvents", {
+      value: events,
+    });
+    for (const type of ["pointermove", "focusin", "keydown"])
+      window.addEventListener(
+        type,
+        (event) => {
+          if (!event.isTrusted) return;
+          const target = event.target instanceof Element ? event.target : null;
+          events.push({
+            type,
+            at: Date.now(),
+            x: event.clientX,
+            y: event.clientY,
+            key: event.key,
+            tag: target?.localName,
+            id: target?.id,
+            inHeader: !!target?.closest("header"),
+            activeTag: document.activeElement?.localName,
+          });
+          if (events.length > 80) events.shift();
+        },
+        { capture: true, passive: true },
+      );
+  });
   let observedPage = page;
-  const directory = `output/playwright/sites/${site.id}/${site.caseId}`;
+  const directory = evidencePath("sites", site.id, site.caseId);
+  let phase = "navigation";
+  let phaseStarted = Date.now();
+  const timings = {};
+  const enter = (next) => {
+    timings[phase] = (timings[phase] ?? 0) + Date.now() - phaseStarted;
+    phase = next;
+    phaseStarted = Date.now();
+  };
+  let access;
+  let failure;
+  let artifactFailure;
+  let result;
+  let pickerDiagnostic;
+  const checkAccess = async (targetPage, response) => {
+    access = await inspectAccess(targetPage, response);
+    if (access.blocked)
+      throw new VerificationError(
+        `Website access blocked${access.status ? ` (HTTP ${access.status})` : ""}: ${access.title}`,
+        { outcome: "blocked", phase, access },
+      );
+  };
   let origin = new URL(site.url).origin;
   const checks = [];
   let ownsProfile = false;
-  await rm(directory, { recursive: true, force: true });
-  await mkdir(directory, { recursive: true });
-  await context.tracing.start({
-    screenshots: true,
-    snapshots: true,
-    sources: true,
-  });
   try {
-    await page.goto(site.url, {
-      waitUntil: "domcontentloaded",
-      timeout: 60000,
+    await rm(directory, { recursive: true, force: true });
+    await mkdir(directory, { recursive: true });
+    await context.tracing.start({
+      screenshots: true,
+      snapshots: true,
+      sources: true,
     });
+  } catch (error) {
+    throw classifyFailure(error, "artifacts");
+  }
+  try {
+    const response = await page.goto(site.url, {
+      waitUntil: "domcontentloaded",
+      timeout: 45000,
+    });
+    await checkAccess(page, response);
+    enter("readiness");
     if (site.readyUrl)
       await page.waitForURL((url) => url.href.includes(site.readyUrl), {
-        timeout: 100000,
+        timeout: 30000,
       });
     let dismissed = false;
     async function dismiss() {
@@ -42,6 +104,8 @@ export async function runLiveSite(context, extensionId, site) {
       }
     }
     await dismiss();
+    await checkAccess(page);
+    enter("baseline");
     origin = new URL(page.url()).origin;
     await writeFile(
       `${directory}/baseline.html`,
@@ -111,9 +175,9 @@ export async function runLiveSite(context, extensionId, site) {
         JSON.stringify({ targetIdentity, retainedIdentity }, null, 2),
       );
     }
-    const readInvariant = async () =>
+    const readInvariant = async (targetPage = page) =>
       site.invariant
-        ? page
+        ? targetPage
             .locator(site.invariant.selector)
             .evaluate(
               (element, invariant) =>
@@ -126,18 +190,18 @@ export async function runLiveSite(context, extensionId, site) {
             )
         : undefined;
     if (site.invariant && "expected" in site.invariant)
-      await expect.poll(readInvariant).toBe(site.invariant.expected);
+      await expect.poll(() => readInvariant()).toBe(site.invariant.expected);
     const initialState = await readInvariant();
-    await page.screenshot({ path: `${directory}/before.png` });
+    await captureEvidence(page, `${directory}/before.png`);
     origin = new URL(page.url()).origin;
     checks.push(
       "Baseline: target is unique and visible; retained content is visible",
     );
     const dock = await openDock(context, panel, page);
-    await panel.evaluate(async (url) => {
-      const tab = (await chrome.tabs.query({})).find((tab) => tab.url === url);
-      history.replaceState(null, "", `?tab=${tab.id}`);
-    }, page.url());
+    const tab = await tabForPage(panel, page);
+    await panel.evaluate((id) => {
+      history.replaceState(null, "", `?tab=${id}`);
+    }, tab.id);
     const initial = await panel.evaluate(
       (origin) => chrome.runtime.sendMessage({ type: "get", origin }),
       origin,
@@ -164,115 +228,194 @@ export async function runLiveSite(context, extensionId, site) {
       ).toBeVisible();
     };
     async function hideTarget() {
-      await page.bringToFront();
-      await target.scrollIntoViewIfNeeded();
-      const sample = () =>
-        target.evaluate((element) => {
-          const rect = element.getBoundingClientRect();
-          const left = Math.max(0, rect.left),
-            right = Math.min(innerWidth, rect.right);
-          const top = Math.max(0, rect.top),
-            bottom = Math.min(innerHeight, rect.bottom);
-          const points = [];
-          for (const fx of [0.02, 0.25, 0.5, 0.75, 0.98])
-            for (const fy of [0.02, 0.25, 0.5, 0.75, 0.98]) {
-              const x = left + (right - left) * fx,
-                y = top + (bottom - top) * fy;
-              let hit = document.elementFromPoint(x, y),
-                depth = 0;
-              while (hit && hit !== element && depth < 30) {
-                hit = hit.parentElement;
-                depth++;
-              }
-              if (hit === element)
-                points.push({
-                  x,
-                  y,
-                  depth,
-                  relativeX: x - rect.left,
-                  relativeY: y - rect.top,
-                });
-            }
-          return points.sort((a, b) => a.depth - b.depth)[0] ?? null;
+      const deadline = Date.now() + 15000;
+      const remaining = () => Math.max(1, deadline - Date.now());
+      while (Date.now() < deadline) {
+        const selectionNode = await target.elementHandle({
+          timeout: remaining(),
         });
-      let point = await sample();
-      if (!point) {
-        await page.locator("taylr-tools").locator("#move").click();
-        point = await sample();
-      }
-      if (!point) {
-        // The dock moves with a spring. Wait for genuine pointer exposure after
-        // moving it; neither an in-flight toolbar nor hydration is a ready target.
+        if (!selectionNode)
+          throw new Error("Declared component is unavailable.");
         try {
+          await page.bringToFront();
+          await target.scrollIntoViewIfNeeded({ timeout: remaining() });
+          const sample = () =>
+            target.evaluate((element) => {
+              const rect = element.getBoundingClientRect();
+              const left = Math.max(0, rect.left),
+                right = Math.min(innerWidth, rect.right);
+              const top = Math.max(0, rect.top),
+                bottom = Math.min(innerHeight, rect.bottom);
+              const points = [];
+              for (const fx of [0.02, 0.25, 0.5, 0.75, 0.98])
+                for (const fy of [0.02, 0.25, 0.5, 0.75, 0.98]) {
+                  const x = left + (right - left) * fx,
+                    y = top + (bottom - top) * fy;
+                  let hit = document.elementFromPoint(x, y),
+                    depth = 0;
+                  while (hit && hit !== element && depth < 30) {
+                    hit = hit.parentElement;
+                    depth++;
+                  }
+                  if (hit === element)
+                    points.push({
+                      x,
+                      y,
+                      depth,
+                      relativeX: x - rect.left,
+                      relativeY: y - rect.top,
+                    });
+                }
+              return points.sort((a, b) => a.depth - b.depth)[0] ?? null;
+            });
+          let point = await sample();
+          if (!point) {
+            await page.locator("taylr-tools").locator("#move").click();
+            point = await sample();
+          }
+          if (!point) {
+            // The dock moves with a spring. Wait for genuine pointer exposure after
+            // moving it; neither an in-flight toolbar nor hydration is a ready target.
+            try {
+              await expect
+                .poll(
+                  async () => {
+                    point = await sample();
+                    return !!point;
+                  },
+                  { timeout: remaining() },
+                )
+                .toBe(true);
+            } catch {
+              throw new Error(
+                "Target has no exposed pointer location; inspect the captured overlay.",
+              );
+            }
+          }
+          // A public page may reflow between sampling and pointer dispatch. Retry
+          // only an observed miss, keeping the same contract and action budget.
+          let moved = false;
           await expect
             .poll(
               async () => {
-                point = await sample();
-                return !!point;
+                if (moved) {
+                  await target.scrollIntoViewIfNeeded({ timeout: remaining() });
+                  point = await sample();
+                }
+                moved = true;
+                if (!point) return false;
+                await page.mouse.move(point.x, point.y);
+                return target.evaluate((element, current) => {
+                  const hit = document.elementFromPoint(current.x, current.y);
+                  return !!hit && element.contains(hit);
+                }, point);
               },
-              { timeout: 15000 },
+              { timeout: remaining() },
             )
             .toBe(true);
-        } catch {
-          throw new Error(
-            "Target has no exposed pointer location; inspect the captured overlay.",
+          pickerDiagnostic = {
+            point,
+            states: [],
+            hit: await target.evaluate((element, point) => {
+              const hit = document.elementFromPoint(point.x, point.y);
+              const chain = [];
+              for (
+                let node = hit;
+                node && chain.length < 8;
+                node = node.parentElement
+              )
+                chain.push({
+                  tag: node.localName,
+                  id: node.id,
+                  role: node.getAttribute("role"),
+                  label: node.getAttribute("aria-label"),
+                });
+              return {
+                insideTarget: !!hit && element.contains(hit),
+                target: element.localName,
+                chain,
+              };
+            }, point),
+          };
+          const selectionMatches = async () => {
+            const state = await panel.evaluate(async () =>
+              chrome.tabs.sendMessage(
+                Number(new URL(location.href).searchParams.get("tab")),
+                { type: "get-picker", selection: true },
+              ),
+            );
+            pickerDiagnostic.states.push({ ...state, at: Date.now() });
+            return (
+              !!state.selector &&
+              target.evaluate(
+                (element, selector) =>
+                  document.querySelector(selector) === element,
+                state.selector,
+              )
+            );
+          };
+          // Follow the actual inspector state, including semantic control grouping.
+          for (
+            let i = 0;
+            i < 30 && Date.now() < deadline && !(await selectionMatches());
+            i++
+          ) {
+            if (
+              !(await selectionNode.evaluate((element) => element.isConnected))
+            )
+              break;
+            await page.keyboard.press("ArrowUp");
+          }
+          // Reacquire only a demonstrably replaced contract node. A connected node
+          // with the wrong picker selection remains a real verification failure.
+          if (!(await selectionNode.evaluate((element) => element.isConnected)))
+            continue;
+          expect(await selectionMatches()).toBe(true);
+          // Native locator clicks wait for the declared element to stop moving.
+          // Preserve the sampled exposed point relative to its settled box.
+          await target.click({
+            position: { x: point.relativeX, y: point.relativeY },
+            timeout: remaining(),
+          });
+          const selection = await page.evaluate(() => {
+            const host = document.querySelector("taylr-tools");
+            const highlight = host?.shadowRoot?.querySelector(".highlight");
+            return {
+              outline: highlight?.getAttribute("style"),
+              hidden: highlight?.hidden,
+            };
+          });
+          await writeFile(
+            `${directory}/selection.json`,
+            JSON.stringify({ point, selection, pickerDiagnostic }, null, 2),
           );
+          await expect(target).toBeHidden();
+          const saved = await panel.evaluate(
+            (origin) => chrome.runtime.sendMessage({ type: "get", origin }),
+            origin,
+          );
+          expect(saved.profile.rules).toHaveLength(1);
+          expect(
+            await target.evaluate(
+              (element, selector) =>
+                document.querySelector(selector) === element,
+              saved.profile.rules[0].selector,
+            ),
+          ).toBe(true);
+          await writeFile(
+            `${directory}/rule.json`,
+            JSON.stringify(saved.profile.rules[0], null, 2),
+          );
+          return;
+        } finally {
+          await selectionNode.dispose();
         }
       }
-      await page.mouse.move(point.x, point.y);
-      const selectionMatches = async () => {
-        const state = await panel.evaluate(async () =>
-          chrome.tabs.sendMessage(
-            Number(new URL(location.href).searchParams.get("tab")),
-            { type: "get-picker", selection: true },
-          ),
-        );
-        return (
-          !!state.selector &&
-          target.evaluate(
-            (element, selector) => document.querySelector(selector) === element,
-            state.selector,
-          )
-        );
-      };
-      // Follow the actual inspector state, including semantic control grouping.
-      for (let i = 0; i < 30 && !(await selectionMatches()); i++)
-        await page.keyboard.press("ArrowUp");
-      expect(await selectionMatches()).toBe(true);
-      // Native locator clicks wait for the declared element to stop moving.
-      // Preserve the sampled exposed point relative to its settled box.
-      await target.click({
-        position: { x: point.relativeX, y: point.relativeY },
-      });
-      const selection = await page.evaluate(() => {
-        const host = document.querySelector("taylr-tools");
-        const highlight = host?.shadowRoot?.querySelector(".highlight");
-        return {
-          outline: highlight?.getAttribute("style"),
-          hidden: highlight?.hidden,
-        };
-      });
-      await writeFile(
-        `${directory}/selection.json`,
-        JSON.stringify({ point, selection }, null, 2),
-      );
-      await expect(target).toBeHidden();
-      const saved = await panel.evaluate(
-        (origin) => chrome.runtime.sendMessage({ type: "get", origin }),
-        origin,
-      );
-      expect(saved.profile.rules).toHaveLength(1);
-      expect(
-        await target.evaluate(
-          (element, selector) => document.querySelector(selector) === element,
-          saved.profile.rules[0].selector,
-        ),
-      ).toBe(true);
-      await writeFile(
-        `${directory}/rule.json`,
-        JSON.stringify(saved.profile.rules[0], null, 2),
+      throw new Error(
+        "Declared component kept being replaced before selection.",
       );
     }
+    enter("hide");
     await start();
     await panel.evaluate(async () => {
       const tab = Number(new URL(location.href).searchParams.get("tab"));
@@ -286,34 +429,45 @@ export async function runLiveSite(context, extensionId, site) {
     expect(page.url()).toBe(originalUrl);
     expect(await readInvariant()).toBe(initialState);
     await expect(kept(page)).toBeVisible();
-    await page.screenshot({ path: `${directory}/hidden.png` });
+    await captureEvidence(page, `${directory}/hidden.png`);
     checks.push(
       "Hide: picker is singular, selected component disappears, content and URL remain",
     );
+    enter("undo");
     await page
       .locator("taylr-tools")
       .getByRole("button", { name: "Undo", exact: true })
       .click();
     await expect(target).toBeVisible();
     expect(await readInvariant()).toBe(initialState);
+    enter("persistence");
     checks.push("Undo: the same component returns without page navigation");
     await hideTarget();
     await page
       .locator("taylr-tools")
       .getByRole("button", { name: "Done", exact: true })
       .click();
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await checkAccess(
+      page,
+      await page.reload({ waitUntil: "domcontentloaded" }),
+    );
+    await expect.poll(() => readInvariant(page)).toBe(initialState);
     revisiting = true;
     await expect(target).toHaveCount(1);
     await expect(kept(page)).toBeVisible();
     await expect(target).toBeHidden();
     const revisit = await context.newPage();
     observedPage = revisit;
-    await revisit.goto(site.url, { waitUntil: "domcontentloaded" });
+    await checkAccess(
+      revisit,
+      await revisit.goto(site.url, { waitUntil: "domcontentloaded" }),
+    );
+    await expect.poll(() => readInvariant(revisit)).toBe(initialState);
     const revisitedTarget = locateTarget(revisit);
     await expect(revisitedTarget).toHaveCount(1);
     await expect(kept(revisit)).toBeVisible();
     await expect(revisitedTarget).toBeHidden();
+    enter("restore");
     checks.push("Persistence: reload and a new tab keep the component hidden");
     observedPage = page;
     await openDock(context, panel, page);
@@ -323,9 +477,13 @@ export async function runLiveSite(context, extensionId, site) {
     observedPage = revisit;
     await expect(revisitedTarget).toBeVisible();
     observedPage = page;
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await checkAccess(
+      page,
+      await page.reload({ waitUntil: "domcontentloaded" }),
+    );
     await expect(target).toBeVisible();
-    expect(await readInvariant()).toBe(initialState);
+    await expect.poll(() => readInvariant(page)).toBe(initialState);
+    enter("exit");
     checks.push("Restore: both tabs recover, including after reload");
     await start();
     await page.bringToFront();
@@ -334,93 +492,92 @@ export async function runLiveSite(context, extensionId, site) {
       0,
     );
     checks.push("Exit: Escape removes the picker and leaves content visible");
-    await dock.locator(".dock").screenshot({ path: `${directory}/dock.png` });
-    return {
+    await captureEvidence(page, `${directory}/dock.png`, {
+      locator: dock.locator(".dock"),
+    });
+    result = {
       site: site.id,
       component: site.component,
       caseId: site.caseId,
       passed: true,
+      outcome: "passed",
+      phase: "complete",
+      timings,
       checks,
     };
   } catch (error) {
-    await observedPage
-      .screenshot({ path: `${directory}/failure.png` })
-      .catch(() => {});
-    await writeFile(
-      `${directory}/failure.html`,
-      await observedPage.content().catch(() => ""),
-    );
-    await writeFile(
-      `${directory}/failure.json`,
-      JSON.stringify(
-        {
-          url: observedPage.url(),
-          title: await observedPage.title().catch(() => ""),
-          text: await observedPage
-            .locator("body")
-            .innerText({ timeout: 2000 })
-            .then((text) => text.slice(0, 4000))
-            .catch(() => ""),
-          targetState: await observedPage
-            .locator(site.target)
-            .first()
-            .evaluate((element) => {
-              const chain = [];
-              for (
-                let node = element;
-                node && chain.length < 8;
-                node = node.parentElement
-              ) {
-                const style = getComputedStyle(node);
-                chain.push({
-                  tag: node.localName,
-                  id: node.id,
-                  class: node.className,
-                  display: style.display,
-                  visibility: style.visibility,
-                  hidden: node.hidden,
-                  width: node.getBoundingClientRect().width,
-                  height: node.getBoundingClientRect().height,
-                });
-              }
-              return chain;
-            })
-            .catch(() => []),
-          profile: await panel
-            .evaluate(
-              (origin) => chrome.runtime.sendMessage({ type: "get", origin }),
-              origin,
-            )
-            .catch(() => null),
-          access: await observedPage
-            .evaluate(() => {
-              const visible = (element) =>
-                !!element.getClientRects().length &&
-                getComputedStyle(element).visibility !== "hidden";
-              const dialog = [...document.querySelectorAll('[role="dialog"]')]
-                .filter(visible)
-                .map((element) => element.textContent ?? "")
-                .join(" ");
-              return {
-                loginDialog: /log in|sign up/i.test(dialog),
-                securityFrame: [
-                  ...document.querySelectorAll("iframe[src]"),
-                ].some(
-                  (element) =>
-                    visible(element) &&
-                    /https:\/\/[^/]*captcha-delivery\.com\//.test(element.src),
-                ),
-              };
-            })
-            .catch(() => ({})),
-          error: error.message,
-          checks,
+    access = await inspectAccess(observedPage).then((observed) => ({
+      ...access,
+      ...observed,
+      status: access?.status,
+      blocked: access?.blocked || observed.blocked,
+    }));
+    if (
+      access.loginDialog &&
+      /no exposed pointer location|Element is not attached/.test(error.message)
+    )
+      access.blocked = true;
+    failure = classifyFailure(error, phase, access);
+    failure.checks = checks;
+    failure.timings = timings;
+    // Diagnostic collection is bounded and best-effort; it must preserve the original failure.
+    const targetState = await observedPage
+      .locator(site.target)
+      .first()
+      .evaluate(
+        (element) => {
+          const chain = [];
+          for (
+            let node = element;
+            node && chain.length < 8;
+            node = node.parentElement
+          ) {
+            const style = getComputedStyle(node);
+            chain.push({
+              tag: node.localName,
+              id: node.id,
+              display: style.display,
+              visibility: style.visibility,
+              hidden: node.hidden,
+            });
+          }
+          return chain;
         },
-        null,
-        2,
+        undefined,
+        { timeout: 500 },
+      )
+      .catch(() => []);
+    await Promise.allSettled([
+      captureEvidence(observedPage, `${directory}/failure.png`, {
+        timeout: 2000,
+      }),
+      observedPage
+        .content()
+        .then((html) => writeFile(`${directory}/failure.html`, html)),
+      writeFile(
+        `${directory}/failure.json`,
+        JSON.stringify(
+          {
+            url: observedPage.url(),
+            ...access,
+            access,
+            targetState,
+            pickerDiagnostic,
+            nativeEvents: await observedPage
+              .evaluate(() => window.__taylrVerificationEvents ?? [])
+              .catch(() => []),
+            error: failure.message,
+            outcome: failure.outcome,
+            phase,
+            checks,
+            timings,
+          },
+          null,
+          2,
+        ),
       ),
-    );
-    throw error;
+    ]);
+    throw failure;
   } finally {
     if (ownsProfile)
       await panel
@@ -429,10 +586,34 @@ export async function runLiveSite(context, extensionId, site) {
           origin,
         )
         .catch(() => {});
-    await context.tracing.stop({ path: `${directory}/trace.zip` });
-    await writeFile(
-      `${directory}/checks.json`,
-      JSON.stringify({ site: site.id, checks }, null, 2),
+    enter("artifacts");
+    const artifacts = await Promise.allSettled([
+      context.tracing.stop(
+        failure || process.env.TAYLR_TRACE === "full"
+          ? { path: `${directory}/trace.zip` }
+          : {},
+      ),
+      writeFile(
+        `${directory}/checks.json`,
+        JSON.stringify(
+          {
+            site: site.id,
+            checks,
+            outcome: failure?.outcome ?? "passed",
+            timings,
+          },
+          null,
+          2,
+        ),
+      ),
+    ]);
+    timings.artifacts = Date.now() - phaseStarted;
+    const artifactError = artifacts.find(
+      (result) => result.status === "rejected",
     );
+    if (!failure && artifactError)
+      artifactFailure = classifyFailure(artifactError.reason, "artifacts");
   }
+  if (artifactFailure) throw artifactFailure;
+  return result;
 }

@@ -1,0 +1,283 @@
+@import "tailwindcss" source(none);
+@source './dock.tsx';
+@source './dock';
+@theme {
+  --spacing: 4px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+}
+:host {
+  color-scheme: dark;
+  direction: ltr;
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+.dock {
+  --ink: #f3f4f6;
+  --muted: #c0c2cf;
+  --iris: #b4a3ff;
+  --coral: #ff9ab0;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  @apply fixed left-0 top-0 flex w-[520px] max-w-[calc(100vw-32px)] pointer-events-auto flex-col rounded-[32px] border border-transparent bg-[#121318]/90 text-[var(--ink)] isolate select-none text-start;
+  font:
+    400 13px/1.4 -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-optical-sizing: auto;
+  direction: ltr;
+  backdrop-filter: blur(24px) saturate(1.9);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.65),
+    0 12px 36px -8px rgba(0, 0, 0, 0.5),
+    inset 0 1px rgba(255, 255, 255, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.11);
+}
+.dock[data-expanded="true"] {
+  border-radius: 24px;
+}
+.bar {
+  @apply p-[7px] min-h-[60px];
+}
+button {
+  @apply appearance-none inline-flex items-center justify-center gap-[6px] shrink-0 min-w-[44px] min-h-[44px] m-0 p-[10px] rounded-[16px] border border-transparent bg-transparent text-[var(--ink)] cursor-pointer;
+  font:
+    600 13px/1.2 -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 120ms ease,
+    opacity 120ms ease,
+    transform 150ms var(--ease-out);
+}
+button:disabled {
+  @apply opacity-[.34] cursor-default;
+}
+button:focus-visible {
+  outline: 2px solid #d5caff;
+  outline-offset: 2px;
+}
+button:not(.primary):focus-visible {
+  background: rgba(255, 255, 255, 0.07);
+}
+button svg {
+  @apply size-5 shrink-0;
+}
+.primary {
+  padding-inline: 14px;
+  background: linear-gradient(165deg, #c1b2ff, #a48aef);
+  color: #20172f;
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.38),
+    0 3px 10px rgba(126, 90, 208, 0.18);
+}
+.primary[aria-pressed="true"] {
+  background: linear-gradient(165deg, #ffb2c2, #ff8da8);
+  color: #32151f;
+}
+.brand {
+  @apply flex shrink-0 items-center ms-[2px] me-[7px] max-[560px]:hidden;
+}
+.mark {
+  @apply size-[27px] drop-shadow-[0_1px_5px_rgba(164,138,239,0.18)];
+}
+.site {
+  @apply flex flex-col gap-[2px] pe-[6px] max-[560px]:ps-[2px] max-[420px]:hidden;
+}
+.site strong {
+  @apply truncate font-[550] leading-[1.3] max-[560px]:text-xs;
+}
+.site small {
+  @apply text-[11px] leading-[1.3] text-[var(--muted)];
+}
+.grip {
+  @apply cursor-grab touch-none text-[var(--muted)];
+}
+.dock[data-dragging="true"] .grip {
+  cursor: grabbing;
+}
+.dock[data-dragging="true"] {
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.65),
+    0 20px 48px -10px rgba(0, 0, 0, 0.65),
+    inset 0 1px rgba(255, 255, 255, 0.2);
+}
+#rules-toggle {
+  @apply relative;
+}
+#rules-toggle[aria-expanded="true"] {
+  background: rgba(180, 163, 255, 0.16);
+  color: #d3c6ff;
+}
+.count {
+  @apply absolute top-[3px] right-[2px] min-w-[15px] h-[15px] px-[3px] py-px rounded-[8px] bg-[#c4b4ff] text-[#251a3a] text-[9px] leading-[13px] font-[750];
+}
+.details {
+  @apply px-[14px] pt-[10px] pb-3 border-t border-white/10 max-h-[min(55dvh,420px)] overflow-auto overscroll-contain max-[420px]:px-[10px];
+  scrollbar-width: thin;
+  scrollbar-color: #66616f transparent;
+}
+.dock[data-edge="bottom"] .details {
+  order: -1;
+  border-top: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.mode {
+  @apply flex gap-2 items-center font-semibold;
+}
+.mode > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--coral);
+  box-shadow: 0 0 12px rgba(255, 94, 126, 0.35);
+}
+#done,
+#cancel {
+  @apply min-h-[36px] py-[6px] text-[var(--muted)] text-xs rounded-[12px];
+}
+.selection {
+  @apply mt-[6px];
+}
+.selection button {
+  @apply bg-white/6 border-white/7 rounded-[14px];
+}
+.selection #hide-selection {
+  @apply text-[var(--coral)];
+}
+#selection-text {
+  @apply text-xs leading-[1.4] line-clamp-2 wrap-anywhere text-[var(--muted)];
+}
+kbd {
+  @apply inline-flex items-center justify-center min-w-[17px] px-1 py-[2px] rounded-[5px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.17)] text-[var(--muted)];
+  font:
+    500 10px/1.2 -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+.hint {
+  @apply flex gap-[18px] justify-center mt-3 mb-0 text-[var(--muted)] text-[10px] max-[420px]:gap-[10px];
+}
+.hint > span {
+  @apply inline-flex items-center gap-1;
+}
+.status {
+  @apply block mt-[10px] mb-0 text-[var(--muted)] text-xs wrap-anywhere;
+}
+.status[data-error="true"] {
+  @apply text-[#ffb3c4];
+}
+.details > .status:first-child {
+  @apply m-0 p-[6px];
+}
+.rules-heading h2 {
+  @apply m-0 text-sm font-semibold;
+}
+.rules-heading button {
+  @apply text-xs text-[#d0c3ff];
+}
+.rule {
+  @apply py-[12px] border-t border-white/8 text-xs wrap-anywhere min-h-[70px];
+}
+.rule button {
+  @apply text-[#d0c3ff] text-[11px] px-[10px] rounded-[12px] bg-[#b4a3ff]/8;
+}
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):hover {
+    background-color: rgba(255, 255, 255, 0.09);
+  }
+  .primary:not(:disabled):hover {
+    filter: brightness(1.06);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dock:not([data-keyboard="true"]) button:not(:disabled):active {
+    transform: scale(0.96);
+  }
+  .dock:not([data-keyboard="true"]) .details {
+    transition:
+      opacity 180ms var(--ease-out),
+      transform 180ms var(--ease-out);
+    @starting-style {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition:
+      background-color 100ms ease,
+      opacity 100ms ease;
+  }
+  .details {
+    transition: opacity 100ms ease;
+  }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .dock {
+    background: #181920;
+    backdrop-filter: none;
+    border-color: #797583;
+  }
+  .details {
+    border-color: #696472;
+  }
+}
+@media (forced-colors: active) {
+  .dock {
+    background: Canvas;
+    color: CanvasText;
+    border-color: CanvasText;
+    box-shadow: none;
+  }
+  .dock button {
+    color: ButtonText;
+    border-color: ButtonText;
+    background: ButtonFace;
+  }
+  .site small,
+  #selection-text,
+  .hint {
+    color: CanvasText;
+  }
+  .mode > span {
+    background: Highlight;
+  }
+}
+@media (max-width: 420px) {
+  .bar {
+    @apply justify-between gap-[2px];
+  }
+  .primary {
+    @apply px-[10px];
+  }
+  .dock {
+    @apply w-[344px];
+  }
+}
+.preview-disclosure {
+  @apply overflow-hidden rounded-[14px] border border-white/8 bg-[#0d0e12]/60;
+}
+.rule .preview-toggle {
+  @apply block w-full min-h-[32px] rounded-none p-0 cursor-zoom-in list-none outline-offset-[-3px] focus-visible:outline-2 focus-visible:outline-[#d5caff] group-data-[expanded=true]:cursor-zoom-out;
+}
+.preview-image {
+  @apply grid min-h-[64px] place-items-center overflow-auto p-2 focus-visible:outline-2 focus-visible:outline-[#d5caff] outline-offset-[-3px];
+  justify-items: safe center;
+}
+.preview-image canvas {
+  @apply block h-auto max-h-[150px] w-[min(100%,var(--preview-width))] max-w-full rounded-[6px] object-contain shadow-[0_3px_12px_#0005] group-data-[expanded=true]:max-h-none group-data-[expanded=true]:w-[var(--preview-width)] group-data-[expanded=true]:max-w-none;
+}
+.preview-image canvas[hidden] {
+  @apply hidden;
+}
+.rule-label {
+  @apply block text-[13px] font-medium leading-[1.5] text-[#f0edf8];
+}

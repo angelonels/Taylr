@@ -1,6 +1,7 @@
 import { build } from "vite";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { Resvg } from "@resvg/resvg-js";
+const { version } = JSON.parse(await readFile("package.json", "utf8"));
 await build({
   build: { outDir: "dist", rollupOptions: { input: "notice.html" } },
 });
@@ -46,7 +47,7 @@ await writeFile(
     {
       manifest_version: 3,
       name: "Taylr",
-      version: "0.2.0",
+      version,
       description: "Hide page elements and restore them later.",
       permissions: ["activeTab", "scripting", "storage"],
       optional_host_permissions: ["https://*/*", "http://*/*"],

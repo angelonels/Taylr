@@ -14,7 +14,11 @@
         "targetIndex": 0,
         "keepIndex": 1,
         "id": "primary",
-        "purpose": "Hide exactly one nested video card without opening or playing it; retain neighboring results."
+        "purpose": "Hide exactly one nested video card without opening or playing it; retain neighboring results.",
+        "identity": {
+          "selector": "a#video-title[href]",
+          "attribute": "href"
+        }
       },
       {
         "id": "search",
@@ -172,7 +176,7 @@
     "name": "Pinterest",
     "category": "Visual discovery · masonry / recycled pins",
     "url": "https://www.pinterest.com/ideas/",
-    "status": "partial: 0/3 verified; 3 externally blocked",
+    "status": "verified: 3/3 component contracts",
     "notes": "Target one editorial board among repeated wrappers and retain its neighboring board.",
     "components": [
       {
@@ -270,7 +274,7 @@
     "name": "Amazon India",
     "category": "Commerce · repeated product grids",
     "url": "https://www.amazon.in/s?k=notebook",
-    "status": "partial: 0/3 verified; 3 externally blocked",
+    "status": "verified: 3/3 component contracts",
     "notes": "Repeated attribute-heavy cards; hide one product while retaining another.",
     "components": [
       {
@@ -479,7 +483,7 @@
     "name": "Tripadvisor",
     "category": "Travel discovery · lazy recommendation carousels",
     "url": "https://www.tripadvisor.com/Tourism-g186338-London_England-Vacations.html",
-    "status": "partial: 0/3 verified; 3 externally blocked",
+    "status": "verified: 0/3 component contracts; blocked: 3/3",
     "notes": "Carousel/section nesting and late content insertion; no reviews or booking.",
     "components": [
       {
@@ -513,7 +517,7 @@
     "name": "Google Search",
     "category": "Search · asynchronously composed results",
     "url": "https://www.google.com/search?q=web+standards",
-    "status": "partial: 0/3 verified; 3 externally blocked",
+    "status": "verified: 0/3 component contracts; blocked: 3/3",
     "notes": "Hide one result block without navigating; preserve the containing results region.",
     "components": [
       {
@@ -742,16 +746,22 @@
     "name": "Canva",
     "category": "Design · responsive template discovery",
     "url": "https://www.canva.com/templates/",
-    "status": "partial: 0/3 verified; 3 externally blocked",
+    "status": "verified: 0/3 component contracts; blocked: 3/3",
     "notes": "Nested template preview/link hit areas; no editor, sign-in, or account actions.",
     "components": [
       {
         "component": "Template preview",
-        "target": "a[href*=\"/templates/\"]",
-        "keep": "main",
+        "target": "main a[href^=\"/templates/\"][aria-label^=\"Preview\"]",
+        "keep": "main a[href^=\"/templates/\"][aria-label^=\"Preview\"]",
         "targetIndex": 0,
         "id": "primary",
-        "purpose": "Nested template preview/link hit areas; no editor, sign-in, or account actions."
+        "purpose": "Nested template preview/link hit areas; no editor, sign-in, or account actions.",
+        "keepIndex": 1,
+        "identity": {
+          "self": true,
+          "selector": "a[aria-label^=\"Preview\"]",
+          "attribute": "href"
+        }
       },
       {
         "id": "navigation",
@@ -763,11 +773,10 @@
       },
       {
         "id": "categories",
-        "component": "Template category tabs",
-        "target": "[role=\"tablist\"]",
+        "component": "Template category tile",
+        "target": "a[href=\"/presentations/templates/\"][aria-labelledby]",
         "keep": "main",
-        "purpose": "Exercise template category tabs selection and restoration separately from template preview.",
-        "targetIndex": 0
+        "purpose": "Hide a real category-discovery tile without opening its link; retain the template catalog. Current Canva uses category tiles rather than a tablist."
       }
     ]
   },
@@ -776,7 +785,7 @@
     "name": "Medium",
     "category": "Publishing · client-rendered article feeds",
     "url": "https://medium.com/tag/technology",
-    "status": "partial: 0/3 verified; 3 externally blocked",
+    "status": "verified: 0/3 component contracts; blocked: 3/3",
     "notes": "Repeated nested typography and follow links; preserve neighboring articles.",
     "components": [
       {
@@ -811,7 +820,7 @@
     "name": "Substack",
     "category": "Publishing · dynamic recommendation feed",
     "url": "https://substack.com/browse/technology",
-    "status": "partial: 2/3 verified; 1 externally blocked",
+    "status": "verified: 1/3 component contracts; blocked: 2/3",
     "notes": "Repeated feed previews and subscription controls; no subscription or login.",
     "components": [
       {
@@ -982,7 +991,7 @@
     "name": "IMDb",
     "category": "Entertainment · ranked repeated list rows",
     "url": "https://www.imdb.com/chart/top/",
-    "status": "partial: 0/3 verified; 3 externally blocked",
+    "status": "verified: 0/3 component contracts; blocked: 3/3",
     "notes": "Nested poster/title/watchlist controls; hide one row without watchlist changes.",
     "components": [
       {
@@ -1242,7 +1251,7 @@
       {
         "id": "algebra",
         "component": "Algebra input panel",
-        "target": "#ggbApplet .algebraView",
+        "target": "#ggbApplet .algebraView[aria-label=\"Algebra\"]",
         "keep": "#ggbApplet canvas[data-test=\"euclidianView\"]",
         "purpose": "Hide the symbolic input panel while preserving the graph."
       },

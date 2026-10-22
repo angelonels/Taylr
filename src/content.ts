@@ -1,9 +1,5 @@
-import {
-  request,
-  requestResult,
-  type ComponentPreview,
-  type SiteProfile,
-} from "./model";
+import { request, requestResult, type SiteProfile } from "./model";
+import { capturePreview, componentText, summarize } from "./preview";
 import { canSelect, selectorFor } from "./selector";
 import type { Inspector, InspectorState } from "./inspector";
 
@@ -56,13 +52,12 @@ function createInspector(): Inspector {
     return [...(selected?.children ?? [])].find(visible) ?? null;
   };
   function label(element: Element) {
+    const heading = [...element.querySelectorAll("h1,h2,h3")].find(visible);
     return (
       element.getAttribute("aria-label") ||
       element.getAttribute("alt") ||
       element.getAttribute("title") ||
-      (element.querySelector("h1,h2,h3")?.textContent || element.textContent)
-        ?.trim()
-        .replace(/\s+/g, " ") ||
+      componentText(heading ?? element) ||
       element.localName
     ).slice(0, 80);
   }
@@ -218,8 +213,14 @@ function createInspector(): Inspector {
       window.addEventListener(
         "focusin",
         (event) => {
-          if (event.isTrusted && !insideToolbar(event))
+          // Site focus managers also create trusted focus events. Preserve an
+          // explicit Parent/Child choice until pointer input or native Tab.
+          if (event.isTrusted && !refined && !insideToolbar(event)) {
+            // Focus changed the selection independently of the pointer. The
+            // next move must retarget even when it returns to the same node.
+            hovered = null;
             select(event.target instanceof Element ? event.target : null);
+          }
         },
         { capture: true, signal },
       );
@@ -289,28 +290,6 @@ function createInspector(): Inspector {
       return;
     }
     const captureTarget = selected;
-    const captureRect = captureTarget.getBoundingClientRect().toJSON();
-    const captureViewport = { width: innerWidth, height: innerHeight };
-    const geometry = () => {
-      const rect = captureTarget.getBoundingClientRect();
-      return JSON.stringify([
-        rect.x,
-        rect.y,
-        rect.width,
-        rect.height,
-        innerWidth,
-        innerHeight,
-        scrollX,
-        scrollY,
-        devicePixelRatio,
-        visualViewport?.offsetLeft,
-        visualViewport?.offsetTop,
-        visualViewport?.scale,
-      ]);
-    };
-    const originalGeometry = geometry();
-    const unchanged = () =>
-      captureTarget.isConnected && geometry() === originalGeometry;
     const elementLabel = label(selected),
       session = picker;
     busy = true;
@@ -318,47 +297,19 @@ function createInspector(): Inspector {
     error = false;
     publish();
     try {
-      let preview: ComponentPreview | undefined;
-      // Remove Taylr's chrome from the pixels. Never wait indefinitely for a preview.
-      const hosts = [uiHost, highlightHost].filter(
-        (host): host is HTMLElement => !!host,
-      );
-      for (const host of hosts)
-        host.style.setProperty("visibility", "hidden", "important");
-      let timeout: ReturnType<typeof setTimeout> | undefined;
-      let previewFinished = false;
-      try {
-        const capture = (async () => {
-          await new Promise<void>((resolve) =>
-            requestAnimationFrame(() => resolve()),
-          );
-          if (previewFinished || !unchanged()) return {};
-          return chrome.runtime
-            .sendMessage({
-              type: "capture-preview",
-              rect: captureRect,
-              viewport: captureViewport,
-            })
-            .catch(() => ({}));
-        })();
-        const result = await Promise.race([
-          capture,
-          new Promise<{ preview?: ComponentPreview }>((resolve) => {
-            timeout = setTimeout(() => resolve({}), 350);
-          }),
-        ]);
-        preview = unchanged() ? result?.preview : undefined;
-      } finally {
-        previewFinished = true;
-        clearTimeout(timeout);
-        for (const host of hosts) host.style.removeProperty("visibility");
-      }
+      const summary = summarize(captureTarget);
+      const preview = await capturePreview(captureTarget, [
+        uiHost,
+        highlightHost,
+      ]);
+      if (picker !== session) return;
       const result = await requestResult({
         type: "add",
         origin: location.origin,
         selector,
         label: elementLabel,
         preview,
+        summary,
       });
       if (picker !== session) return;
       if (result.createdRuleId) sessionIds.push(result.createdRuleId);
@@ -433,6 +384,14 @@ function createInspector(): Inspector {
     "keydown",
     (event) => {
       if (!event.isTrusted || !open) return;
+      if (
+        picker &&
+        event.key === "Tab" &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey
+      )
+        refined = false;
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -466,6 +425,11 @@ function createInspector(): Inspector {
     ) {
       profileUpdates++;
       apply(message.profile);
+    }
+    if (message.type === "setup-failed") {
+      status = "Site setup failed. Choose Hide to retry.";
+      error = true;
+      publish();
     }
     if (message.type === "access-denied") {
       status = "Click Taylr’s icon and allow access to this site.";

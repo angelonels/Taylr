@@ -1,3 +1,4 @@
+import { evidencePath } from "../run-evidence.mjs";
 import { test, expect } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
 import { driver, openDock } from "../dock-actions.mjs";
@@ -39,7 +40,7 @@ test("Picker: namespaced HTML content hides and restores across reload", async (
     await expect(page.locator("#office-content")).toBeVisible();
   } finally {
     await context.tracing.stop({
-      path: "output/playwright/namespaced-elements-trace.zip",
+      path: evidencePath("namespaced-elements-trace.zip"),
     });
     await instance.close();
   }

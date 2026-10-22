@@ -1,3 +1,4 @@
+import { evidencePath } from "../run-evidence.mjs";
 import { test, expect } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import { isolatedBrowser } from "../isolated-browser.mjs";
@@ -33,9 +34,9 @@ test("LeetCode: action opens dock on ordinary HTTPS, record application access s
     ).toBeVisible();
     await expect(dock).not.toContainText(/protected/i);
     await page.keyboard.press("Escape");
-    await page.screenshot({ path: "output/playwright/leetcode-access.png" });
+    await page.screenshot({ path: evidencePath("leetcode-access.png") });
     await writeFile(
-      "output/playwright/leetcode-access.json",
+      evidencePath("leetcode-access.json"),
       JSON.stringify(
         {
           url: page.url(),
@@ -51,7 +52,7 @@ test("LeetCode: action opens dock on ordinary HTTPS, record application access s
     );
   } finally {
     await context.tracing.stop({
-      path: "output/playwright/leetcode-access-trace.zip",
+      path: evidencePath("leetcode-access-trace.zip"),
     });
     await instance.close();
   }
@@ -86,7 +87,7 @@ test("Denied site access: clear recovery and no mutation", async () => {
     await expect(page.getByRole("toolbar", { name: "Taylr" })).toHaveCount(0);
   } finally {
     await context.tracing.stop({
-      path: "output/playwright/denied-access-trace.zip",
+      path: evidencePath("denied-access-trace.zip"),
     });
     await instance.close();
   }
@@ -126,7 +127,7 @@ test("Concurrent toolbar invocation: one registration and no false error", async
     await expect(dock.locator("#hide")).toBeEnabled();
   } finally {
     await context.tracing.stop({
-      path: "output/playwright/concurrent-action-trace.zip",
+      path: evidencePath("concurrent-action-trace.zip"),
     });
     await instance.close();
   }

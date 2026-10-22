@@ -19,12 +19,24 @@ function linkSelector(tag: string, value: string): string {
     .slice(question + 1)
     .split("&")
     .filter(Boolean);
+  let productAttribution = false;
+  try {
+    const url = new URL(value, location.href);
+    // These observed per-visit values are attribution only on Flipkart product
+    // links. Preserve their meaning everywhere else, and retain the SKU/query.
+    productAttribution =
+      /^(www\.)?flipkart\.com$/.test(url.hostname) &&
+      /\/p\/itm[a-z0-9]+\/?$/i.test(url.pathname) &&
+      !!url.searchParams.get("pid");
+  } catch {
+    // Non-URL hrefs retain their exact identity.
+  }
   // Ignore known attribution IDs only; query parameters can be the content identity.
   const stable = parameters.filter(
     (parameter) =>
       !/^(utm_[^=]*|fbclid|gclid|source_impression_id|federated_search_id|previous_page_section_name)=/i.test(
         parameter,
-      ),
+      ) && !(productAttribution && /^(iid|ssid|ppt|ppn)=/i.test(parameter)),
   );
   if (stable.length === parameters.length)
     return `${tag}[href=${CSS.escape(value)}]`;
@@ -65,6 +77,7 @@ export function selectorFor(element: Element): string | null {
       "data-asin",
       "href",
       "aria-label",
+      "aria-haspopup",
       "name",
       "role",
     ]) {
@@ -82,7 +95,7 @@ export function selectorFor(element: Element): string | null {
       if (unique(combinedPath)) return combinedPath;
     }
     // Prefer combinations of semantic identity over a potentially attributed child link.
-    for (const selector of candidates) {
+    for (const selector of [...candidates, tag]) {
       // A card can keep its identity through wrapper/reordering changes via its own link.
       const link = node.querySelector("a[href]");
       const href = link?.getAttribute("href");

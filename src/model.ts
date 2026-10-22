@@ -3,8 +3,16 @@ export interface ComponentPreview {
   width: number;
   height: number;
   partial: boolean;
+  pixelRatio?: number;
+}
+export interface ComponentSummary {
+  kind: string;
+  text: string;
+  width: number;
+  height: number;
 }
 export interface HideRule {
+  summary?: ComponentSummary;
   preview?: ComponentPreview;
   id: string;
   selector: string;
@@ -24,6 +32,7 @@ export type Request =
       selector: string;
       label: string;
       preview?: ComponentPreview;
+      summary?: ComponentSummary;
     }
   | { type: "remove"; origin: string; id: string };
 export type Response =

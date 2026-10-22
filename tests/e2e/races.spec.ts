@@ -1,3 +1,4 @@
+import { evidencePath } from "../run-evidence.mjs";
 import { test, expect } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
 import { driver, openDock } from "../dock-actions.mjs";
@@ -92,7 +93,7 @@ test("Ordered state: delayed Save and Restore replies cannot overwrite newer rul
     await expect(page.locator("#keep")).toBeVisible();
   } finally {
     await context.tracing.stop({
-      path: "output/playwright/ordered-state-trace.zip",
+      path: evidencePath("ordered-state-trace.zip"),
     });
     await instance.close();
   }

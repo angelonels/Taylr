@@ -1,3 +1,4 @@
+import { evidencePath } from "../run-evidence.mjs";
 import { test, expect } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import { isolatedBrowser } from "../isolated-browser.mjs";
@@ -75,7 +76,7 @@ for (const change of ["reflow", "scroll", "disconnect"]) {
         await expect(page.locator("#distraction")).toBeHidden();
     } finally {
       await context.tracing.stop({
-        path: `output/playwright/preview-${change}-trace.zip`,
+        path: evidencePath(`preview-${change}-trace.zip`),
       });
       await instance.close();
     }
@@ -109,14 +110,14 @@ for (const capture of [true, false]) {
       );
       if (capture) {
         expect(stored.rules[0].preview).toBeDefined();
-        expect(stored.rules[0].preview.width).toBeLessThanOrEqual(320);
-        expect(stored.rules[0].preview.height).toBeLessThanOrEqual(200);
-        expect(stored.rules[0].preview.dataUrl.length).toBeLessThan(40000);
+        expect(stored.rules[0].preview.width).toBeLessThanOrEqual(1024);
+        expect(stored.rules[0].preview.height).toBeLessThanOrEqual(768);
+        expect(stored.rules[0].preview.dataUrl.length).toBeLessThan(350000);
         await expect(
           dock.getByRole("img", { name: /Preview of An unwanted sidebar/ }),
         ).toBeVisible();
         await writeFile(
-          "output/playwright/component-preview.webp",
+          evidencePath("component-preview.webp"),
           Buffer.from(stored.rules[0].preview.dataUrl.split(",")[1], "base64"),
         );
         await page.reload();
@@ -128,10 +129,12 @@ for (const capture of [true, false]) {
         ).toBeVisible();
         await dock
           .locator(".dock")
-          .screenshot({ path: "output/playwright/rule-preview.png" });
+          .screenshot({ path: evidencePath("rule-preview.png") });
       } else {
         expect(stored.rules[0].preview).toBeUndefined();
-        await expect(dock.getByText("Preview unavailable")).toBeVisible();
+        await expect(
+          dock.getByText("Text preview", { exact: true }),
+        ).toBeVisible();
       }
       await dock
         .getByRole("button", {
@@ -143,7 +146,7 @@ for (const capture of [true, false]) {
       await expect(dock.locator("#rules li")).toHaveCount(0);
     } finally {
       await context.tracing.stop({
-        path: `output/playwright/preview-${capture}-trace.zip`,
+        path: evidencePath(`preview-${capture}-trace.zip`),
       });
       await instance.close();
     }
@@ -200,8 +203,11 @@ test("Preview isolation: CSP, inactive page, and storage pressure", async () => 
       const original = chrome.storage.local.set.bind(chrome.storage.local);
       chrome.storage.local.set = async (value) => {
         if (
-          Object.values(value).some((profile: any) =>
-            profile.rules?.some((rule: any) => rule.preview),
+          Object.values(value).some(
+            (profile: { rules?: { preview?: unknown }[] }) =>
+              profile.rules?.some(
+                (rule: { preview?: unknown }) => rule.preview,
+              ),
           )
         ) {
           throw new Error("Injected preview quota failure");
@@ -213,12 +219,12 @@ test("Preview isolation: CSP, inactive page, and storage pressure", async () => 
     await page.locator("#distraction").click();
     await expect(page.locator("#distraction")).toBeHidden();
     await dock.locator("#rules-toggle").click();
-    await expect(dock.getByText("Preview unavailable")).toBeVisible();
+    await expect(dock.getByText("Text preview", { exact: true })).toBeVisible();
     await dock.locator("#restore").click();
     await expect(page.locator("#distraction")).toBeVisible();
   } finally {
     await context.tracing.stop({
-      path: "output/playwright/preview-isolation-trace.zip",
+      path: evidencePath("preview-isolation-trace.zip"),
     });
     await instance.close();
   }
@@ -252,11 +258,11 @@ test("Paused animation frames: preview deadline still saves Hide", async () => {
     await page.locator("#distraction").click();
     await expect(page.locator("#distraction")).toBeHidden();
     await dock.locator("#rules-toggle").click();
-    await expect(dock.getByText("Preview unavailable")).toBeVisible();
+    await expect(dock.getByText("Text preview", { exact: true })).toBeVisible();
     await expect(dock.locator("#restore")).toBeEnabled();
   } finally {
     await context.tracing.stop({
-      path: "output/playwright/preview-paused-frame-trace.zip",
+      path: evidencePath("preview-paused-frame-trace.zip"),
     });
     await instance.close();
   }
