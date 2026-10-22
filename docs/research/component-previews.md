@@ -4,6 +4,8 @@ Research and probes: 2026-10-22.
 
 The job is to recognize a previously hidden component and restore the right rule. Pixel presence alone does not establish that a preview is correct. It must depict the selected component at the selected geometry, remain useful on dense displays, and fail without blocking Hide.
 
+Historical permission context: the permission discussion and startup request counts below record the earlier optional per-origin design. The later installation grant and Site pause controls supersede that model; see [current decisions](../decisions.md#2026-10-22-installation-access-and-reversible-site-pause) and [current acceptance](../testing.md).
+
 ## Capture choice
 
 Chrome's native `captureVisibleTab` captures browser-rendered pixels, including canvas and video. It requires `activeTab` or `<all_urls>`; a persistent grant for one origin alone does not authorize capture. Its documented limit is two calls per second. The production extension uses the user's toolbar invocation for activeTab; only isolated pixel tests use broad temporary grants. [Chrome Tabs API](https://developer.chrome.com/docs/extensions/reference/api/tabs)

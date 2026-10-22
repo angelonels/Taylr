@@ -13,7 +13,7 @@
 
 Private rules are isolated in session storage; regular rules stay local. Test runs never reload the extension. An explicit development reload clears private rules; finish private customization work first.
 
-The movable floating in-page toolbar is purely operational, using smoked obsidian glass with iris actions and coral selection feedback. It must never reserve page width. Marketing copy, taglines, and use cases belong to the future landing page. Maintain at least 30 deliberately selected modern, challenging sites, with multiple distinct component contracts per site. Website count alone is not coverage.
+The movable vertical floating in-page panel is purely operational, using smoked charcoal glass with neutral actions and coral selection feedback. It must never reserve page width. Marketing copy, taglines, and use cases belong to the future landing page. Maintain at least 30 deliberately selected modern, challenging sites, with multiple distinct component contracts per site. Website count alone is not coverage.
 
 Use React with TypeScript and Tailwind CSS for the floating dock. Keep the injected picker light and isolated. Save subagent review for the end of implementation/testing, then fix and rereview until no actionable findings remain.
 
