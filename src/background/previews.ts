@@ -138,9 +138,12 @@ export function registerPreviewCapture() {
         const width = Math.min(viewport.width, rect.x + rect.width) - x;
         const height = Math.min(viewport.height, rect.y + rect.height) - y;
         if (width < 1 || height < 1) throw new Error("Outside viewport");
-        const bytes = Uint8Array.from(atob(data.split(",")[1]), (c) =>
-          c.charCodeAt(0),
-        );
+        const decoded = atob(data.split(",")[1]);
+        const bytes = new Uint8Array(decoded.length);
+        // Native PNGs can contain millions of bytes. Avoid a string iterator and
+        // callback per byte on the optional capture's bounded response path.
+        for (let index = 0; index < decoded.length; index++)
+          bytes[index] = decoded.charCodeAt(index);
         const bitmap = await createImageBitmap(
           new Blob([bytes], { type: "image/png" }),
         );
