@@ -1,8 +1,18 @@
 import { readFile } from "node:fs/promises";
-import { test, expect } from "@playwright/test";
+import { test, expect, type BrowserContext } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
 import { driver, openDock } from "../dock-actions.mjs";
 import { evidencePath } from "../run-evidence.mjs";
+
+// Keep every local case offline, including the worker's CDN CSS fetch.
+async function routeStyles(context: BrowserContext) {
+  await context.route("https://styles.example.com/dark.css", async (route) =>
+    route.fulfill({
+      contentType: "text/css",
+      body: await readFile("tests/dark-fixture.css", "utf8"),
+    }),
+  );
+}
 
 // Failure contracts: dark text on light surfaces becomes readable dark UI without
 // pixel inversion, media or draft changes. Toggle, reload, cross-tab and Pause
@@ -12,18 +22,13 @@ test("Dark mode: readable surfaces, preserved media, lifecycle and Hide coexist"
     productionPermissions: true,
   });
   const { context, extensionId } = instance;
+  await routeStyles(context);
   await context.tracing.start({
     screenshots: true,
     snapshots: true,
     sources: true,
   });
   try {
-    await context.route("https://styles.example.com/dark.css", async (route) =>
-      route.fulfill({
-        contentType: "text/css",
-        body: await readFile("tests/dark-fixture.css", "utf8"),
-      }),
-    );
     const bridge = await driver(context, extensionId);
     const page = await context.newPage();
     await page.goto("http://127.0.0.1:5173/tests/dark-fixture.html");
@@ -175,18 +180,13 @@ test("Dark mode: forced colors yields and resumes without losing the setting", a
     productionPermissions: true,
   });
   const { context, extensionId } = instance;
+  await routeStyles(context);
   await context.tracing.start({
     screenshots: true,
     snapshots: true,
     sources: true,
   });
   try {
-    await context.route("https://styles.example.com/dark.css", async (route) =>
-      route.fulfill({
-        contentType: "text/css",
-        body: await readFile("tests/dark-fixture.css", "utf8"),
-      }),
-    );
     const bridge = await driver(context, extensionId);
     const page = await context.newPage();
     await page.goto("http://127.0.0.1:5173/tests/dark-fixture.html");
@@ -230,6 +230,7 @@ test("Dark mode: failed engine load is recoverable and never blocks Hide", async
     productionPermissions: true,
   });
   const { context, extensionId } = instance;
+  await routeStyles(context);
   await context.tracing.start({
     screenshots: true,
     snapshots: true,
@@ -283,6 +284,7 @@ test("Dark mode: shadow styles, stylesheet changes, keyboard and rapid toggles",
     productionPermissions: true,
   });
   const { context, extensionId } = instance;
+  await routeStyles(context);
   await context.tracing.start({
     screenshots: true,
     snapshots: true,
@@ -300,9 +302,19 @@ test("Dark mode: shadow styles, stylesheet changes, keyboard and rapid toggles",
     });
     const dock = await openDock(context, bridge, page);
     const dark = dock.locator("#dark-mode");
+    // Slow storage must not make keyboard focus disappear during the write.
+    await instance.worker.evaluate(() => {
+      const set = chrome.storage.local.set.bind(chrome.storage.local);
+      chrome.storage.local.set = async (items) => {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        await set(items);
+      };
+    });
     await dark.focus();
     await page.keyboard.press("Space");
     await expect(dark).toHaveAttribute("aria-pressed", "true");
+    await expect(dark).toHaveAttribute("aria-busy", "false");
+    await expect(dark).toBeFocused();
     await expect
       .poll(() =>
         page
@@ -357,6 +369,7 @@ test("Dark mode: explicit Apple Maps request restores its native lock on Off", a
     productionPermissions: true,
   });
   const { context, extensionId } = instance;
+  await routeStyles(context);
   await context.tracing.start({
     screenshots: true,
     snapshots: true,
@@ -406,6 +419,7 @@ for (const action of ["Off", "Resume"] as const) {
       productionPermissions: true,
     });
     const { context, extensionId } = instance;
+    await routeStyles(context);
     await context.tracing.start({
       screenshots: true,
       snapshots: true,

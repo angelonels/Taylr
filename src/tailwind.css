@@ -67,7 +67,8 @@ button {
     opacity 120ms ease,
     transform 100ms var(--ease-out);
 }
-button:disabled {
+button:disabled,
+button[aria-disabled="true"] {
   @apply opacity-[.34] cursor-default;
 }
 button:focus-visible {
@@ -192,7 +193,7 @@ kbd {
   @apply text-[#e8e6df] text-[11px] px-[10px] rounded-[12px] bg-white/8;
 }
 @media (hover: hover) and (pointer: fine) {
-  button:not(:disabled):hover {
+  button:not(:disabled):not([aria-disabled="true"]):hover {
     background-color: rgba(255, 255, 255, 0.09);
   }
   .primary:not(:disabled):hover {
@@ -203,7 +204,8 @@ kbd {
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .dock:not([data-keyboard="true"]) button:not(:disabled):active {
+  .dock:not([data-keyboard="true"])
+    button:not(:disabled):not([aria-disabled="true"]):active {
     transform: scale(0.97);
     transition-duration: 150ms;
   }

@@ -190,7 +190,8 @@ function Dock({
           label="Dark mode"
           aria-pressed={!!state.profile.darkMode}
           aria-busy={state.themeStatus === "applying"}
-          disabled={state.busy || state.profile.paused}
+          aria-disabled={state.busy || state.profile.paused}
+          disabled={state.profile.paused}
           onClick={() => void inspector.setDarkMode(!state.profile.darkMode)}
         >
           <Icon name="moon" />
