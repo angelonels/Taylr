@@ -15,6 +15,60 @@ async function routeStyles(context: BrowserContext) {
   );
 }
 
+// Updating files beneath a loaded unpacked extension does not restart its
+// worker. Model the previous worker's message vocabulary, without reloading an
+// extension or attaching to a personal profile.
+test("Dark mode: older worker gives extension reload guidance and preserves Hide", async () => {
+  const instance = await isolatedBrowser(undefined, {
+    productionPermissions: true,
+    backgroundPrelude: `
+const addMessageListener = chrome.runtime.onMessage.addListener.bind(chrome.runtime.onMessage);
+chrome.runtime.onMessage.addListener = listener => addMessageListener((message, sender, reply) => {
+  if (["set-dark-mode", "theme-sync", "theme-css"].includes(message?.type)) return;
+  return listener(message, sender, reply);
+});
+`,
+  });
+  const { context, extensionId } = instance;
+  await context.tracing.start({
+    screenshots: true,
+    snapshots: true,
+    sources: true,
+  });
+  try {
+    const bridge = await driver(context, extensionId);
+    const page = await context.newPage();
+    await page.goto("http://127.0.0.1:5173/tests/dark-fixture.html");
+    let dock = await openDock(context, bridge, page);
+    const guidance =
+      "Reload Taylr in Chrome’s extension settings, then reload this page.";
+    await expect(dock.locator("#status")).toHaveText(guidance);
+    await dock.locator("#dark-mode").click();
+    await expect(dock.locator("#status")).toHaveText(guidance);
+    await expect(dock.locator("#dark-mode")).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    await expect(dock.locator("#dark-mode")).toHaveAttribute(
+      "aria-busy",
+      "false",
+    );
+    await dock.locator("#hide").click();
+    await expect(dock.locator("#hide")).toHaveAttribute("aria-pressed", "true");
+    await dock.locator("#cancel").click();
+    await page.reload();
+    dock = await openDock(context, bridge, page);
+    await expect(dock.locator("#status")).toHaveText(guidance);
+    await expect(page.locator("html")).not.toHaveAttribute(
+      "data-taylr-theme",
+      "active",
+    );
+  } finally {
+    await context.tracing.stop({ path: evidencePath("dark-older-worker.zip") });
+    await instance.close();
+  }
+});
+
 // Failure contracts: dark text on light surfaces becomes readable dark UI without
 // pixel inversion, media or draft changes. Toggle, reload, cross-tab and Pause
 // are reversible; CSS/DOM changes update; native extension messaging still works.

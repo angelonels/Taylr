@@ -31,6 +31,8 @@ npm run build
 
 Open `chrome://extensions` in the approved development browser, enable **Developer mode**, choose **Load unpacked**, and select this project's `dist` directory. Rebuild and explicitly reload the extension after source changes, then refresh existing website tabs. Tests never reload an existing extension or use personal browser data.
 
+If Hide works but Dark mode reports a connection error after a rebuild, the loaded background worker may still be from the previous build. Refreshing the website alone cannot update it: reload **Taylr** in Chrome’s extension settings first, then refresh the website. The panel identifies an unanswered message with that recovery instruction.
+
 `npm run dev` starts the local fixture server. It does not watch/reload an installed extension. The build is an unpacked Manifest V3 extension; `dist/` is generated and excluded from Git.
 
 | Path                                                  | Responsibility                                                 |

@@ -1,4 +1,9 @@
-import { request, requestResult, type SiteProfile } from "./model";
+import {
+  extensionReloadMessage,
+  request,
+  requestResult,
+  type SiteProfile,
+} from "./model";
 import { capturePreview, componentText, summarize } from "./preview";
 import { canSelect, selectorFor } from "./selector";
 import type { Inspector, InspectorState, ThemeStatus } from "./inspector";
@@ -101,9 +106,11 @@ function createInspector(): Inspector {
       .then((result) => {
         if (revision !== themeRevision) return;
         themeStatus = result?.status ?? "error";
-        if (result?.error) {
-          themeError = result.error;
-          status = result.error;
+        const failure =
+          result?.error || (!result?.status ? extensionReloadMessage : "");
+        if (failure) {
+          themeError = failure;
+          status = failure;
           error = true;
         } else {
           if (themeError && status === themeError) {
@@ -225,8 +232,8 @@ function createInspector(): Inspector {
     previousFocus = document.activeElement;
     open = true;
     openRevision++;
-    status = "";
-    error = false;
+    status = themeError;
+    error = !!themeError;
     publish();
   }
   async function start() {

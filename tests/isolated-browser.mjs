@@ -17,6 +17,7 @@ export async function isolatedBrowser(
     productionPermissions = false,
     deviceScaleFactor = 1,
     browserArgs = [],
+    backgroundPrelude = "",
   } = {},
 ) {
   const root = await mkdtemp(join(tmpdir(), "taylr-e2e-"));
@@ -68,7 +69,9 @@ const listen = chrome.action.onClicked.addListener.bind(chrome.action.onClicked)
 chrome.action.onClicked.addListener = handler => { globalThis.__invokeTaylrAction = handler; listen(handler); };
 const requestNative = chrome.permissions.request.bind(chrome.permissions);
 chrome.permissions.request = async permissions => (await chrome.permissions.contains(permissions)) || requestNative(permissions);
-` + background,
+` +
+        backgroundPrelude +
+        background,
     );
     context = await chromium.launchPersistentContext(join(root, "data"), {
       channel: "chromium",

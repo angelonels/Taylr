@@ -79,3 +79,5 @@ Small bundled CSS exceptions preserve sufficient text contrast on observed satur
 The hosted runner’s Azure HTTP package mirror stalled for nearly five minutes on one font archive during final acceptance. CI switches only that mirror URL to Ubuntu’s HTTPS archive before installing browser system dependencies; package signatures and the required dependency set remain intact. Browser and npm caches remain unchanged.
 
 Feature branches are verified through their pull requests; pushes to main verify merged changes. This avoids duplicate push/PR jobs downloading the same browser dependencies for the same update. Manual workflow scopes remain available for branch diagnostics.
+
+An unpacked extension can temporarily combine newly built injected files with an older running background worker. Missing message responses now identify the need to reload Taylr in Chrome's extension settings before refreshing the website. Theme startup publishes this guidance and reopening the panel preserves it. A disposable older-worker fixture reproduces the mismatch without reloading an extension or using personal profile data.
