@@ -74,6 +74,12 @@ test("Startup: focused Hide retains contrast on first open and reopen", async ()
     await invokeAction(context, bridge, page);
     // Pointer-origin focus need not match :focus-visible; readability still must.
     await checkContrast(false);
+    // Choosing another control during the pending check must keep that focus.
+    await hide.press("Enter");
+    await expect(hide).toHaveAttribute("aria-busy", "true");
+    await dock.locator("#site-toggle").focus();
+    await expect(hide).toHaveAttribute("aria-pressed", "true");
+    await expect(dock.locator("#site-toggle")).toBeFocused();
   } finally {
     try {
       await context.tracing.stop({

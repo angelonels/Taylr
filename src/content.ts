@@ -287,7 +287,9 @@ function createInspector(): Inspector {
         revision === openRevision &&
         !profile.paused &&
         (document.activeElement === document.body ||
-          document.activeElement === uiHost)
+          (document.activeElement === uiHost &&
+            (!uiHost?.shadowRoot?.activeElement ||
+              uiHost?.shadowRoot?.activeElement?.id === "hide")))
       )
         focusSerial++;
       publish();
