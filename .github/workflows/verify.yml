@@ -38,6 +38,19 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: chromium-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+      # The runner's Azure HTTP mirror stalled for minutes on font downloads.
+      - name: Use Ubuntu HTTPS archive for browser dependencies
+        run: |
+          sudo python3 - <<'PYTHON'
+          from pathlib import Path
+          sources = Path("/etc/apt/sources.list.d")
+          for path in [Path("/etc/apt/sources.list"), *sources.glob("*.list"), *sources.glob("*.sources")]:
+              if path.is_file():
+                  original = path.read_text()
+                  updated = original.replace("http://azure.archive.ubuntu.com/ubuntu", "https://archive.ubuntu.com/ubuntu")
+                  if updated != original:
+                      path.write_text(updated)
+          PYTHON
       - name: Install Chromium and system dependencies
         run: npx playwright install --with-deps chromium
       # The wrapper builds once, then owns the fixture server and evidence root.

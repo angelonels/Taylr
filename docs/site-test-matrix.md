@@ -49,7 +49,7 @@ The earlier audit at `2026-10-22T19-03-40-532Z-61cc73` recorded 36 passes, five 
 | Notion            | Passed                                                                              | 1                           | 30               |
 | Desmos            | Passed                                                                              | 3                           | 4                |
 | Canva             | Blocked · Just a moment...                                                          | —                           | —                |
-| Medium            | Blocked · Attention Required!                                                       | Cloudflare                  | —                | —   |
+| Medium            | Blocked · Security challenge                                                        | —                           | —                |
 | Substack          | Passed                                                                              | 13                          | 40               |
 | BBC News          | Passed                                                                              | 38                          | 38               |
 | CNN               | Passed                                                                              | 24                          | 28               |
