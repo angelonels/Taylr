@@ -12,62 +12,64 @@ The shared chain protects feature invariants across different DOMs. It does not 
 
 The dark-mode branch adds Wikipedia, MDN, Hacker News, arXiv and Project Gutenberg. They contribute distinct article navigation, reference sidebars, legacy story tables, scientific abstracts and book-download metadata. Each has three explicit Hide contracts in addition to the theme lifecycle.
 
-The deterministic gate passed **77 cases**, with **44 intentional skips** (42 public-theme cases run separately and two opt-in checks), in **3.5 minutes**. It covers readable surfaces, original media pixels, drafts, DOM and open-shadow updates, keyboard focus during slow writes, rapid toggles, cross-tab persistence, Pause, forced colors, engine failure and denied registration. Evidence: `output/playwright/runs/2026-10-22T18-53-58-448Z-a10028/headless/report/index.html`.
+The deterministic gate passed **79 cases**, with **44 intentional skips** (42 public-theme cases run separately and two opt-in checks), in **2.8 minutes**. It covers readable surfaces, original media pixels, drafts, DOM and open-shadow updates, keyboard focus during slow writes, rapid toggles, cross-tab persistence, Pause, forced colors, engine failure, denied registration, existing-tab initialization, rejected CSS redirects and delayed resource observation. Evidence: `output/playwright/runs/2026-10-22T19-22-07-724Z-92d612/headless/report/index.html`.
 
-The added five sites and the updated YouTube Videos-filter entry point passed **18/18 Hide contracts** (**108 checkpoints**), with no blocks or failures, in **3.3 minutes**. Evidence: `output/playwright/runs/2026-10-22T18-59-36-794Z-21c9f8/headless/catalog-report.html`. The other **108 Hide contracts were not selected** in this feature rerun.
+The added five sites and the updated YouTube Videos-filter entry point passed **18/18 Hide contracts** (**108 checkpoints**), with no blocks or failures, in **1.7 minutes**. Evidence: `output/playwright/runs/2026-10-22T19-35-08-984Z-8dbe47/headless/catalog-report.html`. The other **108 Hide contracts were not selected** in this feature rerun.
 
 Public-site results below are recorded separately from historical Hide acceptance. A theme pass requires all three component baselines, bounded text-contrast regression checks where measurable, unchanged media filters, visible components, color restoration and saved application after reload. It does not establish all Hide checkpoints or certify accessibility. See [testing.md](testing.md#dark-mode-acceptance) for the sampling limits.
 
-The full dark-mode audit attempted **all 42 sites** in **8.4 minutes**: **36 passed**, **5 externally blocked**, and **1 TradingView settling timeout**. There were no unrun sites. The five blocked sites were Tripadvisor, Google Search, Canva, Medium and IMDb. Their challenges remain unverified coverage. Full evidence: `output/playwright/runs/2026-10-22T19-03-40-532Z-61cc73/headless/dark-results.json` and its `report/index.html`.
+The final dark-mode audit attempted **all 42 sites** in one coherent run in **9.1 minutes** with three disposable workers: **37 passed**, **5 externally blocked**, **0 product/contract/environment/harness failures**, **0 unrun**. Tripadvisor, Google Search, Canva, Medium and IMDb remain blocked and unverified. Full evidence: `output/playwright/runs/2026-10-22T19-25-23-787Z-08f3d2/headless/dark-results.json` and its `report/index.html`. Each site retains screenshots and a trace in that run's `dark-sites/<id>/` folder.
 
-TradingView's trace showed live market quotes flashing between neutral/red/green while the sampled contrasts stayed readable; the harness required all sampled colors to stop changing at once. Its separate unchanged rerun passed the full lifecycle in **17.3 seconds**. Evidence: `output/playwright/runs/2026-10-22T19-12-45-669Z-609c48/headless/dark-results.json`. The two runs have the same source/build/harness fingerprint. Together they provide completed lifecycle evidence for **37 sites**, with **5 blocked**. This is a full attempt plus a targeted rerun, not a single 37-pass report; the original failure remains preserved. Live feeds can still exceed the conservative settling window.
+Review fixes preceded this run: first-use theme initialization in already-open tabs, rejection of CSS redirects before any hop, actual resource-body completion plus quiet/observation windows, explicit measurement-loss failures, per-sample settling for live quotes, changed-color restoration coverage and engine-style cleanup.
+
+The earlier audit at `2026-10-22T19-03-40-532Z-61cc73` recorded 36 passes, five blocks and a TradingView all-colors-settling timeout; its unchanged TradingView rerun at `2026-10-22T19-12-45-669Z-609c48` passed. Those attempts remain historical. They do not substitute for the stricter final run above, which passes TradingView while allowing live quotes to keep changing and still checks every supported text pair.
 
 | Site              | Dark lifecycle                                                                      | Measurable contrast samples | Restored samples |
 | ----------------- | ----------------------------------------------------------------------------------- | --------------------------- | ---------------- |
-| YouTube           | Passed                                                                              | 31                          | 31               |
-| Lichess           | Passed                                                                              | 0                           | 10               |
+| YouTube           | Passed                                                                              | 29                          | 29               |
+| Lichess           | Passed                                                                              | 1                           | 10               |
 | Steam             | Passed                                                                              | 16                          | 40               |
 | Instagram         | Passed                                                                              | 15                          | 15               |
 | Excalidraw        | Passed                                                                              | 1                           | 4                |
 | Pinterest         | Passed                                                                              | 8                           | 11               |
 | Twitch            | Passed                                                                              | 38                          | 40               |
-| Spotify           | Passed                                                                              | 33                          | 36               |
+| Spotify           | Passed                                                                              | 34                          | 36               |
 | Amazon India      | Passed                                                                              | 39                          | 40               |
 | Flipkart          | Passed                                                                              | 23                          | 37               |
 | IKEA              | Passed                                                                              | 40                          | 40               |
-| Apple Music       | Passed                                                                              | 1                           | 40               |
-| Airbnb            | Passed                                                                              | 30                          | 40               |
-| Booking.com       | Passed                                                                              | 29                          | 31               |
+| Apple Music       | Passed                                                                              | 2                           | 40               |
+| Airbnb            | Passed                                                                              | 39                          | 40               |
+| Booking.com       | Passed                                                                              | 34                          | 37               |
 | Tripadvisor       | Blocked · tripadvisor.com                                                           | —                           | —                |
-| Google Search     | Blocked · https://www.google.com/search?q=web+standards&sei=KF_aaqPaEqSUhvcP4ozTiQo | —                           | —                |
-| Google Maps       | Passed                                                                              | 6                           | 6                |
+| Google Search     | Blocked · https://www.google.com/search?q=web+standards&sei=NmTaaqz0AtO2hvcPvIXiqAI | —                           | —                |
+| Google Maps       | Passed                                                                              | 19                          | 20               |
 | Google News       | Passed                                                                              | 32                          | 34               |
 | GitHub            | Passed                                                                              | 36                          | 40               |
 | GitLab            | Passed                                                                              | 40                          | 40               |
-| Notion            | Passed                                                                              | 1                           | 26               |
+| Notion            | Passed                                                                              | 1                           | 30               |
 | Desmos            | Passed                                                                              | 3                           | 4                |
 | Canva             | Blocked · Just a moment...                                                          | —                           | —                |
 | Medium            | Blocked · Attention Required!                                                       | Cloudflare                  | —                | —   |
 | Substack          | Passed                                                                              | 13                          | 40               |
-| BBC News          | Passed                                                                              | 29                          | 29               |
-| CNN               | Passed                                                                              | 24                          | 25               |
-| Google Translate  | Passed                                                                              | 15                          | 15               |
+| BBC News          | Passed                                                                              | 38                          | 38               |
+| CNN               | Passed                                                                              | 24                          | 28               |
+| Google Translate  | Passed                                                                              | 15                          | 8                |
 | ESPN              | Passed                                                                              | 38                          | 40               |
 | IMDb              | Blocked · 403                                                                       | —                           | —                |
 | tldraw            | Passed                                                                              | 1                           | 2                |
-| TradingView       | Passed on identical-build rerun; initial settling timeout retained                  | 1                           | 3                |
+| TradingView       | Passed                                                                              | 16                          | 16               |
 | Google Flights    | Passed                                                                              | 19                          | 21               |
 | Hugging Face      | Passed                                                                              | 8                           | 40               |
 | Apple Maps        | Passed                                                                              | 0                           | 4                |
-| Scratch           | Passed                                                                              | 9                           | 11               |
+| Scratch           | Passed                                                                              | 7                           | 8                |
 | GeoGebra          | Passed                                                                              | 2                           | 3                |
 | Wikipedia         | Passed                                                                              | 40                          | 40               |
 | MDN               | Passed                                                                              | 40                          | 40               |
-| Hacker News       | Passed                                                                              | 11                          | 40               |
+| Hacker News       | Passed                                                                              | 10                          | 40               |
 | arXiv             | Passed                                                                              | 40                          | 40               |
 | Project Gutenberg | Passed                                                                              | 22                          | 23               |
 
-Sample counts describe bounded observations, not a site-wide accessibility score. A zero contrast count means the sampled surfaces could not support the solid-background measurement; other lifecycle checks still ran.
+Sample counts describe bounded observations, not a site-wide accessibility score. A zero contrast count means the baseline surfaces could not support the solid-background measurement; other lifecycle checks still ran. A previously measurable surviving sample becoming unmeasurable cannot pass.
 
 ## Vertical panel acceptance
 
