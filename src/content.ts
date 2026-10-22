@@ -10,6 +10,7 @@ function createInspector(): Inspector {
   let profileUpdates = 0;
   let themeStatus: ThemeStatus = "off";
   let themeRevision = 0;
+  let themeError = "";
   let open = false;
   let picker: AbortController | null = null;
   let selected: Element | null = null;
@@ -101,15 +102,23 @@ function createInspector(): Inspector {
         if (revision !== themeRevision) return;
         themeStatus = result?.status ?? "error";
         if (result?.error) {
+          themeError = result.error;
           status = result.error;
           error = true;
+        } else {
+          if (themeError && status === themeError) {
+            status = "";
+            error = false;
+          }
+          themeError = "";
         }
         publish();
       })
       .catch(() => {
         if (revision !== themeRevision) return;
         themeStatus = "error";
-        status = "Could not update dark mode. Reload to try again.";
+        themeError = "Could not update dark mode. Reload to try again.";
+        status = themeError;
         error = true;
         publish();
       });

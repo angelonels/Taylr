@@ -27,119 +27,131 @@ chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
     ].includes(message.type)
   )
     return;
-  pending = pending.then(async () => {
+  const respond = (result: unknown) => {
+    // The originating document may close while a write is queued. Losing its
+    // reply must never poison the shared writer for every other tab.
     try {
-      const url = new URL(message.origin);
-      if (
-        !["https:", "http:"].includes(url.protocol) ||
-        url.origin !== message.origin
-      )
-        throw new Error("Open a website to use Taylr.");
-      if (
-        sender.tab &&
-        !sender.url?.startsWith(chrome.runtime.getURL("")) &&
-        new URL(sender.url!).origin !== message.origin
-      )
-        throw new Error("This page cannot change another site.");
-      const key = storageKey(message.origin);
-      const stored = (await chrome.storage[storageArea()].get(key))[key] as
-        SiteProfile | undefined;
-      const profile: SiteProfile = stored ?? {
-        version: 1,
-        origin: message.origin,
-        rules: [],
-      };
-      let createdRuleId: string | undefined;
-      if (message.type === "set-dark-mode") {
-        if (typeof message.darkMode !== "boolean")
-          throw new Error("Invalid site setting.");
-        profile.darkMode = message.darkMode;
-        await registerOrigin(message.origin);
-      }
-      if (message.type === "set-paused") {
-        if (typeof message.paused !== "boolean")
-          throw new Error("Invalid site setting.");
-        profile.paused = message.paused;
-      }
-      if (message.type === "add") {
-        if (profile.paused)
-          throw new Error("Resume this site before hiding elements.");
+      reply(result);
+    } catch {
+      /* Disconnected port. */
+    }
+  };
+  pending = pending
+    .catch(() => {})
+    .then(async () => {
+      try {
+        const url = new URL(message.origin);
         if (
-          typeof message.selector !== "string" ||
-          message.selector.length > 4096 ||
-          typeof message.label !== "string"
+          !["https:", "http:"].includes(url.protocol) ||
+          url.origin !== message.origin
         )
-          throw new Error(
-            "This element cannot be saved. Try a surrounding element.",
-          );
-        if (!profile.rules.some((rule) => rule.selector === message.selector)) {
-          createdRuleId = crypto.randomUUID();
-          profile.rules.push({
-            id: createdRuleId,
-            selector: message.selector,
-            label: message.label.slice(0, 120),
-            createdAt: Date.now(),
-            ...(validSummary(message.summary)
-              ? { summary: message.summary }
-              : {}),
-            ...(validPreview(message.preview)
-              ? { preview: message.preview }
-              : {}),
-          });
+          throw new Error("Open a website to use Taylr.");
+        if (
+          sender.tab &&
+          !sender.url?.startsWith(chrome.runtime.getURL("")) &&
+          new URL(sender.url!).origin !== message.origin
+        )
+          throw new Error("This page cannot change another site.");
+        const key = storageKey(message.origin);
+        const stored = (await chrome.storage[storageArea()].get(key))[key] as
+          SiteProfile | undefined;
+        const profile: SiteProfile = stored ?? {
+          version: 1,
+          origin: message.origin,
+          rules: [],
+        };
+        let createdRuleId: string | undefined;
+        if (message.type === "set-dark-mode") {
+          if (typeof message.darkMode !== "boolean")
+            throw new Error("Invalid site setting.");
+          profile.darkMode = message.darkMode;
+          if (message.darkMode) await registerOrigin(message.origin);
         }
-      }
-      if (message.type === "remove")
-        profile.rules = profile.rules.filter((rule) => rule.id !== message.id);
-      if (message.type === "restore") profile.rules = [];
-      if (message.type !== "get") {
-        try {
-          await chrome.storage[storageArea()].set({ [key]: profile });
-        } catch (error) {
-          // A preview is optional: storage pressure must never prevent a new Hide.
-          const added = profile.rules.find((rule) => rule.id === createdRuleId);
-          if (!added?.preview) throw error;
-          delete added.preview;
-          await chrome.storage[storageArea()].set({ [key]: profile });
+        if (message.type === "set-paused") {
+          if (typeof message.paused !== "boolean")
+            throw new Error("Invalid site setting.");
+          if (!message.paused) await registerOrigin(message.origin);
+          profile.paused = message.paused;
         }
-        let setupError: unknown;
-        if (message.type === "set-paused" && !message.paused) {
-          try {
-            await registerOrigin(message.origin);
-          } catch (error) {
-            setupError = error;
+        if (message.type === "add") {
+          if (profile.paused)
+            throw new Error("Resume this site before hiding elements.");
+          if (
+            typeof message.selector !== "string" ||
+            message.selector.length > 4096 ||
+            typeof message.label !== "string"
+          )
+            throw new Error(
+              "This element cannot be saved. Try a surrounding element.",
+            );
+          if (
+            !profile.rules.some((rule) => rule.selector === message.selector)
+          ) {
+            createdRuleId = crypto.randomUUID();
+            profile.rules.push({
+              id: createdRuleId,
+              selector: message.selector,
+              label: message.label.slice(0, 120),
+              createdAt: Date.now(),
+              ...(validSummary(message.summary)
+                ? { summary: message.summary }
+                : {}),
+              ...(validPreview(message.preview)
+                ? { preview: message.preview }
+                : {}),
+            });
           }
         }
-        const tabs = await chrome.tabs.query({ url: `${message.origin}/*` });
-        await Promise.allSettled(
-          tabs
-            .filter(
-              (tab) =>
-                tab.incognito === chrome.extension.inIncognitoContext && tab.id,
-            )
-            .map(async (tab) => {
-              // Ensure a controller exists even if earlier setup failed, then
-              // resume saved rules in this tab as well as mounted panels.
-              if (message.type === "set-paused" && !message.paused)
-                await chrome.scripting.executeScript({
-                  target: { tabId: tab.id! },
-                  files: ["content.js"],
+        if (message.type === "remove")
+          profile.rules = profile.rules.filter(
+            (rule) => rule.id !== message.id,
+          );
+        if (message.type === "restore") profile.rules = [];
+        if (message.type !== "get") {
+          try {
+            await chrome.storage[storageArea()].set({ [key]: profile });
+          } catch (error) {
+            // A preview is optional: storage pressure must never prevent a new Hide.
+            const added = profile.rules.find(
+              (rule) => rule.id === createdRuleId,
+            );
+            if (!added?.preview) throw error;
+            delete added.preview;
+            await chrome.storage[storageArea()].set({ [key]: profile });
+          }
+          const tabs = await chrome.tabs.query({ url: `${message.origin}/*` });
+          await Promise.allSettled(
+            tabs
+              .filter(
+                (tab) =>
+                  tab.incognito === chrome.extension.inIncognitoContext &&
+                  tab.id,
+              )
+              .map(async (tab) => {
+                // Ensure a controller exists even if earlier setup failed, then
+                // resume saved rules in this tab as well as mounted panels.
+                if (message.type === "set-paused" && !message.paused)
+                  await chrome.scripting.executeScript({
+                    target: { tabId: tab.id! },
+                    files: ["content.js"],
+                  });
+                await chrome.tabs.sendMessage(tab.id!, {
+                  type: "profile",
+                  profile,
                 });
-              await chrome.tabs.sendMessage(tab.id!, {
-                type: "profile",
-                profile,
-              });
-            }),
-        );
-        if (setupError) throw setupError;
+              }),
+          );
+        }
+        respond({ profile, createdRuleId });
+      } catch (error) {
+        respond({
+          error:
+            error instanceof Error
+              ? error.message
+              : "Could not save. Try again.",
+        });
       }
-      reply({ profile, createdRuleId });
-    } catch (error) {
-      reply({
-        error:
-          error instanceof Error ? error.message : "Could not save. Try again.",
-      });
-    }
-  });
+    });
   return true;
 });
 

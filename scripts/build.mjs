@@ -40,6 +40,20 @@ for (const [entry, extension] of [
             cleanup +
               '\nremoveNode(root.querySelector(".darkreader--invert"));',
           );
+          const update =
+            "function update() {\n        const details = manager.details({secondRound: true});";
+          code = code.replaceAll("\r\n", "\n");
+          if (!code.includes(update))
+            throw new Error(
+              "Review Dark Reader manager lifecycle before upgrading.",
+            );
+          // A delayed DOM-ready callback can run after destroy and recreate a
+          // sync stylesheet (observed on Google Maps). Only the current owner
+          // may render; an old manager must not resurrect a disabled theme.
+          code = code.replace(
+            update,
+            "function update() {\n        if (styleManagers.get(element) !== manager) return;\n        const details = manager.details({secondRound: true});",
+          );
           return {
             code: "const chrome = { runtime: {} };\n" + code,
             map: null,

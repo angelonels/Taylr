@@ -204,7 +204,7 @@ function Dock({
                   applying: "Applying…",
                   "forced-colors": "System colors",
                   external: "Other theme",
-                  error: "Retry",
+                  error: "Error",
                 }[state.themeStatus]}
           </span>
         </Tool>

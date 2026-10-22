@@ -349,3 +349,120 @@ test("Dark mode: shadow styles, stylesheet changes, keyboard and rapid toggles",
     await instance.close();
   }
 });
+
+// Apple Maps ships a native Dark Reader opt-out. An explicit Taylr request
+// themes its controls while leaving map pixels intact; Off restores that meta.
+test("Dark mode: explicit Apple Maps request restores its native lock on Off", async () => {
+  const instance = await isolatedBrowser(undefined, {
+    productionPermissions: true,
+  });
+  const { context, extensionId } = instance;
+  await context.tracing.start({
+    screenshots: true,
+    snapshots: true,
+    sources: true,
+  });
+  try {
+    await context.route("https://maps.apple.com/frame*", async (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        body: await readFile("tests/dark-fixture.html", "utf8"),
+      }),
+    );
+    const bridge = await driver(context, extensionId);
+    const page = await context.newPage();
+    await page.goto("https://maps.apple.com/frame?test=1");
+    await page.evaluate(() => {
+      const meta = document.createElement("meta");
+      meta.name = "darkreader-lock";
+      document.head.append(meta);
+    });
+    const dock = await openDock(context, bridge, page);
+    await dock.locator("#dark-mode").click();
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-darkreader-mode",
+      "dynamic",
+    );
+    await expect(page.locator('meta[name="darkreader-lock"]')).toHaveCount(0);
+    await dock.locator("#dark-mode").click();
+    await expect(page.locator("html")).not.toHaveAttribute(
+      "data-darkreader-mode",
+      "dynamic",
+    );
+    await expect(page.locator('meta[name="darkreader-lock"]')).toHaveCount(1);
+  } finally {
+    await context.tracing.stop({
+      path: evidencePath("dark-native-lock-trace.zip"),
+    });
+    await instance.close();
+  }
+});
+
+// Failure contracts: saving Off needs no new grant. A failed Resume must leave
+// the saved pause in place, with no intermediate unpaused broadcast.
+for (const action of ["Off", "Resume"] as const) {
+  test(`Dark mode: denied registration keeps ${action} atomic`, async () => {
+    const instance = await isolatedBrowser(undefined, {
+      productionPermissions: true,
+    });
+    const { context, extensionId } = instance;
+    await context.tracing.start({
+      screenshots: true,
+      snapshots: true,
+      sources: true,
+    });
+    try {
+      const bridge = await driver(context, extensionId);
+      const page = await context.newPage();
+      await page.goto("http://127.0.0.1:5173/tests/dark-fixture.html");
+      const dock = await openDock(context, bridge, page);
+      await dock.locator("#dark-mode").click();
+      await expect(dock.locator("#dark-mode")).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      if (action === "Resume") {
+        await dock.locator("#site-toggle").click();
+        await dock.locator("#site-pause").click();
+        await expect(dock.locator("#site-pause")).toHaveText("Resume site");
+      }
+      await instance.worker.evaluate(() => {
+        chrome.permissions.contains = async () => false;
+      });
+      if (action === "Off") {
+        await dock.locator("#dark-mode").click();
+        await expect(dock.locator("#dark-mode")).toHaveAttribute(
+          "aria-pressed",
+          "false",
+        );
+        await expect(page.locator("html")).not.toHaveAttribute(
+          "data-darkreader-mode",
+          "dynamic",
+        );
+      } else {
+        await dock.locator("#site-pause").click();
+        await expect(dock.locator("#status")).toContainText("allow access");
+        await expect(dock.locator("#site-pause")).toHaveText("Resume site");
+        const profile = await bridge.evaluate(
+          async () =>
+            (
+              await chrome.runtime.sendMessage({
+                type: "get",
+                origin: "http://127.0.0.1:5173",
+              })
+            ).profile,
+        );
+        expect(profile.paused).toBe(true);
+        await expect(page.locator("html")).not.toHaveAttribute(
+          "data-darkreader-mode",
+          "dynamic",
+        );
+      }
+    } finally {
+      await context.tracing.stop({
+        path: evidencePath(`dark-denied-${action}-trace.zip`),
+      });
+      await instance.close();
+    }
+  });
+}

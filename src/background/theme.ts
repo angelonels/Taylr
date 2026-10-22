@@ -45,9 +45,20 @@ export function registerTheme() {
           });
           if (
             !response.ok ||
-            !response.headers.get("content-type")?.includes("text/css")
+            !response.headers
+              .get("content-type")
+              ?.toLowerCase()
+              .includes("text/css")
           )
             throw new Error("Invalid stylesheet response");
+          const finalURL = new URL(response.url);
+          if (
+            !["http:", "https:"].includes(finalURL.protocol) ||
+            !(await chrome.permissions.contains({
+              origins: [`${finalURL.origin}/*`],
+            }))
+          )
+            throw new Error("Stylesheet redirect access unavailable");
           const reader = response.body?.getReader();
           if (!reader) throw new Error("Empty stylesheet response");
           let size = 0;
@@ -62,8 +73,11 @@ export function registerTheme() {
                 throw new Error("Stylesheet too large");
               chunks.push(decoder.decode(value, { stream: true }));
             }
+          } catch (cause) {
+            await reader.cancel().catch(() => {});
+            throw cause;
           } finally {
-            await reader.cancel();
+            reader.releaseLock();
           }
           reply({ css: chunks.join("") + decoder.decode() });
           return;
@@ -76,10 +90,17 @@ export function registerTheme() {
             const enabled = !!profile?.darkMode && !profile.paused;
             const [probe] = await chrome.scripting.executeScript({
               target,
-              func: () => !!window.__taylrTheme,
+              func: () => ({
+                loaded: !!window.__taylrTheme,
+                stale:
+                  !window.__taylrTheme &&
+                  document.documentElement?.hasAttribute("data-taylr-theme"),
+              }),
             });
-            if (!probe.result && !enabled) return "off" as ThemeStatus;
-            if (!probe.result)
+            if (probe.result?.stale)
+              throw new Error("Previous extension context. Reload this page.");
+            if (!probe.result?.loaded && !enabled) return "off" as ThemeStatus;
+            if (!probe.result?.loaded)
               await chrome.scripting.executeScript({
                 target,
                 files: ["theme.js"],
