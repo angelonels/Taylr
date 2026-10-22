@@ -30,6 +30,7 @@
     "vite": "^7.1.12"
   },
   "dependencies": {
+    "darkreader": "4.9.133",
     "motion": "^14.5.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

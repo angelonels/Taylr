@@ -25,9 +25,11 @@ function Icon({
     | "down"
     | "grip"
     | "restore"
-    | "site";
+    | "site"
+    | "moon";
 }) {
   const paths = {
+    moon: "M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z",
     site: "M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7l-9-4Z",
     hide: "M4 9V4h5m6 0h5v5m0 6v5h-5M9 20H4v-5M8 12h8",
     undo: "M9 5 4 10l5 5M4 10h9a6 6 0 0 1 0 12",
@@ -184,6 +186,29 @@ function Dock({
           <span>Undo</span>
         </Tool>
         <Tool
+          id="dark-mode"
+          label="Dark mode"
+          aria-pressed={!!state.profile.darkMode}
+          aria-busy={state.themeStatus === "applying"}
+          disabled={state.busy || state.profile.paused}
+          onClick={() => void inspector.setDarkMode(!state.profile.darkMode)}
+        >
+          <Icon name="moon" />
+          <span>Dark mode</span>
+          <span className="count">
+            {state.profile.paused
+              ? "Paused"
+              : {
+                  off: "Off",
+                  on: "On",
+                  applying: "Applying…",
+                  "forced-colors": "System colors",
+                  external: "Other theme",
+                  error: "Retry",
+                }[state.themeStatus]}
+          </span>
+        </Tool>
+        <Tool
           id="rules-toggle"
           ref={rulesRef}
           label="Rules"
@@ -221,8 +246,8 @@ function Dock({
               <h2>{state.profile.paused ? "Site paused" : "Site active"}</h2>
               <p className="empty">
                 {state.profile.paused
-                  ? "Taylr stops selecting and hiding here. Saved rules are kept."
-                  : "Pause Taylr on this site to reveal hidden elements and stop selection."}
+                  ? "Taylr stops hiding and recoloring here. Saved settings are kept."
+                  : "Pause Taylr on this site to reveal hidden elements and restore the site’s colors."}
               </p>
               <button
                 id="site-pause"
@@ -373,6 +398,8 @@ if (inspector) {
       "all:initial!important;position:fixed!important;inset:0!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;max-width:none!important;max-height:none!important;width:auto!important;height:auto!important;pointer-events:none!important;overflow:visible!important;z-index:2147483647!important;";
     const root = host.attachShadow({ mode: "open" });
     const stylesheet = document.createElement("style");
+    // Keep our isolated operational UI outside the page recoloring engine.
+    stylesheet.className = "darkreader";
     stylesheet.textContent = css;
     root.append(stylesheet);
     const mount = document.createElement("div");

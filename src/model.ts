@@ -24,9 +24,11 @@ export interface SiteProfile {
   origin: string;
   rules: HideRule[];
   paused?: boolean;
+  darkMode?: boolean;
 }
 export type Request =
   | { type: "get" | "restore"; origin: string }
+  | { type: "set-dark-mode"; origin: string; darkMode: boolean }
   | { type: "set-paused"; origin: string; paused: boolean }
   | {
       type: "add";

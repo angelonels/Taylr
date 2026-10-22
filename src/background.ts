@@ -1,3 +1,4 @@
+import { registerTheme } from "./background/theme";
 import { openTools } from "./background/open-tools";
 import {
   validPreview,
@@ -16,7 +17,14 @@ let pending = Promise.resolve();
 chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
   if (
     !message ||
-    !["get", "add", "remove", "restore", "set-paused"].includes(message.type)
+    ![
+      "get",
+      "add",
+      "remove",
+      "restore",
+      "set-paused",
+      "set-dark-mode",
+    ].includes(message.type)
   )
     return;
   pending = pending.then(async () => {
@@ -42,6 +50,12 @@ chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
         rules: [],
       };
       let createdRuleId: string | undefined;
+      if (message.type === "set-dark-mode") {
+        if (typeof message.darkMode !== "boolean")
+          throw new Error("Invalid site setting.");
+        profile.darkMode = message.darkMode;
+        await registerOrigin(message.origin);
+      }
       if (message.type === "set-paused") {
         if (typeof message.paused !== "boolean")
           throw new Error("Invalid site setting.");
@@ -248,3 +262,5 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
 });
 
 registerPreviewCapture();
+
+registerTheme();
