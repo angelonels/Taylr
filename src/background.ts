@@ -130,7 +130,10 @@ chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
               .map(async (tab) => {
                 // Ensure a controller exists even if earlier setup failed, then
                 // resume saved rules in this tab as well as mounted panels.
-                if (message.type === "set-paused" && !message.paused)
+                if (
+                  (message.type === "set-paused" && !message.paused) ||
+                  (message.type === "set-dark-mode" && message.darkMode)
+                )
                   await chrome.scripting.executeScript({
                     target: { tabId: tab.id! },
                     files: ["content.js"],

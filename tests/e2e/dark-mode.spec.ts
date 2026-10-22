@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { test, expect, type BrowserContext } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
-import { driver, openDock } from "../dock-actions.mjs";
+import { driver, openDock, tabForPage } from "../dock-actions.mjs";
+import { observeThemeResources } from "../theme-resources";
 import { evidencePath } from "../run-evidence.mjs";
 
 // Keep every local case offline, including the worker's CDN CSS fetch.
@@ -57,6 +58,10 @@ test("Dark mode: readable surfaces, preserved media, lifecycle and Hide coexist"
     const original = await page
       .locator("#card")
       .evaluate((el) => getComputedStyle(el).backgroundColor);
+    // A same-origin tab opened before first use must join the saved theme.
+    const second = await context.newPage();
+    await second.goto(page.url());
+    await page.bringToFront();
     const dock = await openDock(context, bridge, page);
     const panelFill = await dock
       .locator("#hide")
@@ -129,8 +134,6 @@ test("Dark mode: readable surfaces, preserved media, lifecycle and Hide coexist"
     await dock.locator("#rules-toggle").click();
     await dock.locator("#restore").click();
     await expect(page.locator("#card")).toBeVisible();
-    const second = await context.newPage();
-    await second.goto(page.url());
     await expect
       .poll(() =>
         second
@@ -480,3 +483,170 @@ for (const action of ["Off", "Resume"] as const) {
     }
   });
 }
+
+// Failure first: a public CSS redirect must never fetch a local destination;
+// non-CSS, oversized, credential-bearing and non-HTTP requests stay rejected.
+test("Dark mode: CSS bridge rejects redirects and invalid responses", async () => {
+  const instance = await isolatedBrowser(undefined, {
+    productionPermissions: true,
+  });
+  const { context, extensionId } = instance;
+  await routeStyles(context);
+  await context.tracing.start({
+    screenshots: true,
+    snapshots: true,
+    sources: true,
+  });
+  let localRequests = 0;
+  let redirectRequests = 0;
+  context.on("request", (request) => {
+    if (request.url() === "http://127.0.0.1:5173/tests/dark-fixture.css")
+      localRequests++;
+    if (request.url() === "https://css-target.example.com/redirected.css")
+      redirectRequests++;
+  });
+  await context.route(
+    "https://css-target.example.com/redirected.css",
+    (route) => {
+      return route.fulfill({
+        contentType: "text/css",
+        body: "body {color:red}",
+      });
+    },
+  );
+  await context.route(
+    "http://127.0.0.1:5173/tests/dark-fixture.css",
+    (route) => {
+      return route.fulfill({
+        contentType: "text/css",
+        body: "body {color:red}",
+      });
+    },
+  );
+  await context.route("*://css.example.com/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/local-redirect")
+      return route.fulfill({
+        status: 302,
+        headers: { location: "http://127.0.0.1:5173/tests/dark-fixture.css" },
+      });
+    if (path === "/redirect")
+      return route.fulfill({
+        status: 302,
+        headers: { location: "https://css-target.example.com/redirected.css" },
+      });
+    return route.fulfill({
+      contentType: path === "/mime" ? "text/html" : "text/css",
+      body:
+        path === "/large"
+          ? "x".repeat(2 * 1024 * 1024 + 1)
+          : "body {color:red}",
+    });
+  });
+  try {
+    const bridge = await driver(context, extensionId);
+    const page = await context.newPage();
+    await page.goto("http://127.0.0.1:5173/tests/dark-fixture.html");
+    const dock = await openDock(context, bridge, page);
+    await dock.locator("#dark-mode").click();
+    await expect(dock.locator("#dark-mode")).toContainText("On");
+    const { id } = await tabForPage(bridge, page);
+    const css = (url: string) =>
+      bridge.evaluate(
+        async ({ tabId, url }) => {
+          const [result] = await chrome.scripting.executeScript({
+            target: { tabId },
+            func: async (url) =>
+              chrome.runtime.sendMessage({ type: "theme-css", url }),
+            args: [url],
+          });
+          return result.result;
+        },
+        { tabId: id, url },
+      );
+    expect(await css("https://css.example.com/valid")).toMatchObject({
+      css: "body {color:red}",
+    });
+    for (const url of [
+      "https://css.example.com/redirect",
+      "http://css.example.com/local-redirect",
+      "https://css.example.com/mime",
+      "https://css.example.com/large",
+      "https://user:pass@css.example.com/private",
+      "data:text/css,body{}",
+    ])
+      expect(await css(url), url).toHaveProperty("error");
+    expect(
+      localRequests,
+      "Local redirect destination was never requested",
+    ).toBe(0);
+    expect(
+      redirectRequests,
+      "Redirects are rejected before following any hop",
+    ).toBe(0);
+  } finally {
+    await context.tracing.stop({
+      path: evidencePath("dark-mode-css-boundary.zip"),
+    });
+    await instance.close();
+  }
+});
+
+// Failure first: a quiet color frame must not outrun a pending worker CSS body.
+test("Dark mode: theme observation waits for a delayed stylesheet", async () => {
+  const instance = await isolatedBrowser(undefined, {
+    productionPermissions: true,
+  });
+  const { context, extensionId } = instance;
+  const resources = observeThemeResources(context);
+  let release: () => void;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let pendingCSS = false;
+  await context.route("https://styles.example.com/dark.css", async (route) => {
+    if (route.request().serviceWorker()) {
+      pendingCSS = true;
+      await released;
+    }
+    await route.fulfill({
+      contentType: "text/css",
+      body: await readFile("tests/dark-fixture.css", "utf8"),
+    });
+  });
+  await context.tracing.start({
+    screenshots: true,
+    snapshots: true,
+    sources: true,
+  });
+  try {
+    const bridge = await driver(context, extensionId);
+    const page = await context.newPage();
+    await page.goto("http://127.0.0.1:5173/tests/dark-fixture.html");
+    const dock = await openDock(context, bridge, page);
+    resources.resetQuietWindow();
+    await dock.locator("#dark-mode").click();
+    await expect.poll(() => pendingCSS).toBe(true);
+    // Longer than the old ~600 ms acceptance window.
+    await page.waitForTimeout(1500);
+    expect(resources.quiet(), "Pending CSS cannot qualify as settled").toBe(
+      false,
+    );
+    expect(resources.snapshot().pending).toBeGreaterThan(0);
+    release();
+    await expect.poll(() => resources.quiet(), { timeout: 5000 }).toBe(true);
+    await expect
+      .poll(() =>
+        page
+          .locator("#external")
+          .evaluate((el) => getComputedStyle(el).backgroundColor),
+      )
+      .not.toBe("rgb(255, 255, 255)");
+  } finally {
+    release();
+    await context.tracing.stop({
+      path: evidencePath("dark-mode-delayed-css.zip"),
+    });
+    await instance.close();
+  }
+});

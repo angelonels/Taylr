@@ -40,6 +40,9 @@ export function registerTheme() {
             throw new Error("Stylesheet access unavailable");
           const response = await fetch(url.href, {
             credentials: "omit",
+            // Validate before following any hop; final-URL checks are too late
+            // to prevent public CSS from reaching private/local destinations.
+            redirect: "error",
             cache: "force-cache",
             signal: AbortSignal.timeout(8000),
           });
