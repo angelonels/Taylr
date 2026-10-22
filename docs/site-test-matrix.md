@@ -1,12 +1,73 @@
 # Public-site regression matrix
 
-The catalog contains **37 sites and 111 component contracts**, selected for difficult rendering and interaction models: repeated cards, nested controls, custom-element hosts, canvas/WebGL/SVG workspaces, client rendering, sticky controls, media, and regional redirects. A case exists for its component behavior, not to inflate a website count.
+The catalog contains **42 sites and 126 component contracts**, selected for difficult rendering and interaction models: repeated cards, nested controls, custom-element hosts, canvas/WebGL/SVG workspaces, client rendering, sticky controls, media, and regional redirects. A case exists for its component behavior, not to inflate a website count.
 
 The original reference/demo choices and Stack Overflow are removed. Security-only candidates Reddit, X, eBay, Etsy, Figma Community and The New York Times were replaced with accessible application workspaces. TikTok's regional denial was replaced with Excalidraw. The additional whiteboard, charting, creative coding, mathematics, map, flight-search and AI-catalog cases increase real application coverage while blocked popular sites remain visible as future regression candidates.
 
 Each component independently follows **H01** visible target and retained content; **H02** precise Hide with no navigation or unintended control activation; **H03** Undo; **H04** attached-but-hidden reload and new-tab persistence; **H05** Restore across tabs and after reload; **H06** Escape. A missing node is not proof of hiding. Declared listing identities follow the selected item when the server reorders results. Retained components are independently chosen; preserving a descendant of the hidden target would be an invalid contract.
 
 The shared chain protects feature invariants across different DOMs. It does not claim all behavior of the host applications is covered. Interactive contracts also retain meaningful state where available, including default sprite identity, unchanged search text, closed menus and editor zoom. Local fixture coverage separately checks concurrency, UUIDs and URL tracking IDs, card insertion, hostile typography, hierarchy round trips, hidden children, synthetic clicks, modifier and middle clicks, RTL placement, layout shifts, visible cancellation, focus recovery, denied access, stale responses, native zoom, viewport preservation, dock movement, reduced motion and visual rule previews.
+
+## Dark-mode acceptance
+
+The dark-mode branch adds Wikipedia, MDN, Hacker News, arXiv and Project Gutenberg. They contribute distinct article navigation, reference sidebars, legacy story tables, scientific abstracts and book-download metadata. Each has three explicit Hide contracts in addition to the theme lifecycle.
+
+The deterministic gate passed **77 cases**, with **44 intentional skips** (42 public-theme cases run separately and two opt-in checks), in **3.5 minutes**. It covers readable surfaces, original media pixels, drafts, DOM and open-shadow updates, keyboard focus during slow writes, rapid toggles, cross-tab persistence, Pause, forced colors, engine failure and denied registration. Evidence: `output/playwright/runs/2026-10-22T18-53-58-448Z-a10028/headless/report/index.html`.
+
+The added five sites and the updated YouTube Videos-filter entry point passed **18/18 Hide contracts** (**108 checkpoints**), with no blocks or failures, in **3.3 minutes**. Evidence: `output/playwright/runs/2026-10-22T18-59-36-794Z-21c9f8/headless/catalog-report.html`. The other **108 Hide contracts were not selected** in this feature rerun.
+
+Public-site results below are recorded separately from historical Hide acceptance. A theme pass requires all three component baselines, bounded text-contrast regression checks where measurable, unchanged media filters, visible components, color restoration and saved application after reload. It does not establish all Hide checkpoints or certify accessibility. See [testing.md](testing.md#dark-mode-acceptance) for the sampling limits.
+
+The full dark-mode audit attempted **all 42 sites** in **8.4 minutes**: **36 passed**, **5 externally blocked**, and **1 TradingView settling timeout**. There were no unrun sites. The five blocked sites were Tripadvisor, Google Search, Canva, Medium and IMDb. Their challenges remain unverified coverage. Full evidence: `output/playwright/runs/2026-10-22T19-03-40-532Z-61cc73/headless/dark-results.json` and its `report/index.html`.
+
+TradingView's trace showed live market quotes flashing between neutral/red/green while the sampled contrasts stayed readable; the harness required all sampled colors to stop changing at once. Its separate unchanged rerun passed the full lifecycle in **17.3 seconds**. Evidence: `output/playwright/runs/2026-10-22T19-12-45-669Z-609c48/headless/dark-results.json`. The two runs have the same source/build/harness fingerprint. Together they provide completed lifecycle evidence for **37 sites**, with **5 blocked**. This is a full attempt plus a targeted rerun, not a single 37-pass report; the original failure remains preserved. Live feeds can still exceed the conservative settling window.
+
+| Site              | Dark lifecycle                                                                      | Measurable contrast samples | Restored samples |
+| ----------------- | ----------------------------------------------------------------------------------- | --------------------------- | ---------------- |
+| YouTube           | Passed                                                                              | 31                          | 31               |
+| Lichess           | Passed                                                                              | 0                           | 10               |
+| Steam             | Passed                                                                              | 16                          | 40               |
+| Instagram         | Passed                                                                              | 15                          | 15               |
+| Excalidraw        | Passed                                                                              | 1                           | 4                |
+| Pinterest         | Passed                                                                              | 8                           | 11               |
+| Twitch            | Passed                                                                              | 38                          | 40               |
+| Spotify           | Passed                                                                              | 33                          | 36               |
+| Amazon India      | Passed                                                                              | 39                          | 40               |
+| Flipkart          | Passed                                                                              | 23                          | 37               |
+| IKEA              | Passed                                                                              | 40                          | 40               |
+| Apple Music       | Passed                                                                              | 1                           | 40               |
+| Airbnb            | Passed                                                                              | 30                          | 40               |
+| Booking.com       | Passed                                                                              | 29                          | 31               |
+| Tripadvisor       | Blocked · tripadvisor.com                                                           | —                           | —                |
+| Google Search     | Blocked · https://www.google.com/search?q=web+standards&sei=KF_aaqPaEqSUhvcP4ozTiQo | —                           | —                |
+| Google Maps       | Passed                                                                              | 6                           | 6                |
+| Google News       | Passed                                                                              | 32                          | 34               |
+| GitHub            | Passed                                                                              | 36                          | 40               |
+| GitLab            | Passed                                                                              | 40                          | 40               |
+| Notion            | Passed                                                                              | 1                           | 26               |
+| Desmos            | Passed                                                                              | 3                           | 4                |
+| Canva             | Blocked · Just a moment...                                                          | —                           | —                |
+| Medium            | Blocked · Attention Required!                                                       | Cloudflare                  | —                | —   |
+| Substack          | Passed                                                                              | 13                          | 40               |
+| BBC News          | Passed                                                                              | 29                          | 29               |
+| CNN               | Passed                                                                              | 24                          | 25               |
+| Google Translate  | Passed                                                                              | 15                          | 15               |
+| ESPN              | Passed                                                                              | 38                          | 40               |
+| IMDb              | Blocked · 403                                                                       | —                           | —                |
+| tldraw            | Passed                                                                              | 1                           | 2                |
+| TradingView       | Passed on identical-build rerun; initial settling timeout retained                  | 1                           | 3                |
+| Google Flights    | Passed                                                                              | 19                          | 21               |
+| Hugging Face      | Passed                                                                              | 8                           | 40               |
+| Apple Maps        | Passed                                                                              | 0                           | 4                |
+| Scratch           | Passed                                                                              | 9                           | 11               |
+| GeoGebra          | Passed                                                                              | 2                           | 3                |
+| Wikipedia         | Passed                                                                              | 40                          | 40               |
+| MDN               | Passed                                                                              | 40                          | 40               |
+| Hacker News       | Passed                                                                              | 11                          | 40               |
+| arXiv             | Passed                                                                              | 40                          | 40               |
+| Project Gutenberg | Passed                                                                              | 22                          | 23               |
+
+Sample counts describe bounded observations, not a site-wide accessibility score. A zero contrast count means the sampled surfaces could not support the solid-background measurement; other lifecycle checks still ran.
 
 ## Vertical panel acceptance
 
@@ -26,7 +87,7 @@ Historical catalog evidence: `output/playwright/runs/2026-10-22T14-45-59-704Z-a1
 
 The previous 0.2.0 audit recorded 89 passed and 22 blocked. Website access changes between attempts; these different runs are not a controlled performance comparison. Use the scoped commands in [testing.md](testing.md) to revalidate evidence. This matrix is a point-in-time compatibility record, not a guarantee against future website changes.
 
-| Site                                                                                     | Component contracts                                                                                                 | Why this site earns a place                                                                                                                                                            | Latest acceptance                                        |
+| Site                                                                                     | Component contracts                                                                                                 | Why this site earns a place                                                                                                                                                            | Historical Hide acceptance                               |
 | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
 | [YouTube](https://www.youtube.com/results?search_query=web+development)                  | `primary` Video result card<br>`search` Search field container<br>`filters` Search filter strip                     | Video search · repeated web-component cards. Hide exactly one nested video card without opening or playing it; retain neighboring results.                                             | Verified · 3/3 contracts, 18/18 checkpoints.             |
 | [Lichess](https://lichess.org/analysis)                                                  | `primary` Chessboard<br>`controls` Move controls<br>`analysis` Analysis tools                                       | Interactive board · custom elements / SVG. Exercise a live chessboard and analysis workspace without making a move or signing in.                                                      | Verified · 3/3 contracts, 18/18 checkpoints.             |
@@ -65,6 +126,16 @@ The previous 0.2.0 audit recorded 89 passed and 22 blocked. Website access chang
 | [Apple Maps](https://maps.apple.com/frame?center=51.5074%2C-0.1278&span=0.1%2C0.1)       | `primary` Map viewport<br>`navigation` Map navigation surface<br>`search` Search navigation link                    | Maps · full-window WebGL canvas / floating navigation. Exercise a full-viewport map beneath an independently positioned navigation surface.                                            | Verified · 3/3 contracts, 18/18 checkpoints.             |
 | [Scratch](https://scratch.mit.edu/projects/editor/)                                      | `primary` Stage canvas<br>`blocks` Block category toolbox<br>`sprites` Sprite target pane                           | Creative coding · Blockly SVG / stage canvas / React panes. Exercise the anonymous editor without running blocks, importing assets or saving a project.                                | Verified · 3/3 contracts, 18/18 checkpoints.             |
 | [GeoGebra](https://www.geogebra.org/graphing)                                            | `primary` Graphing canvas<br>`algebra` Algebra input panel<br>`keyboard` Virtual math keyboard                      | Math workspace · GWT / canvas / virtual keyboard. Exercise graphics, algebra and keyboard layers without entering a mathematical expression.                                           | Verified · 3/3 contracts, 18/18 checkpoints.             |
+
+## Added Hide contracts
+
+| Site                                                     | Components                                              | Behavior contributed                                    | Current Hide acceptance          |
+| -------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------- | -------------------------------- |
+| [Wikipedia](https://en.wikipedia.org/wiki/Computer)      | Article title, contents navigation, hardware table      | Dense article landmarks and table reflow                | 3/3 contracts, 18/18 checkpoints |
+| [MDN](https://developer.mozilla.org/en-US/docs/Web/CSS)  | Reference title, article contents, reference navigation | Independent technical-reference sidebars                | 3/3 contracts, 18/18 checkpoints |
+| [Hacker News](https://news.ycombinator.com/)             | Story row, header brand, pagination link                | Legacy table layouts and stable repeated-story identity | 3/3 contracts, 18/18 checkpoints |
+| [arXiv](https://arxiv.org/abs/1706.03762)                | Paper title, author links, abstract                     | Scientific publication metadata and long-form text      | 3/3 contracts, 18/18 checkpoints |
+| [Project Gutenberg](https://www.gutenberg.org/ebooks/84) | Book title, download formats, metadata table            | Download links and structured book metadata             | 3/3 contracts, 18/18 checkpoints |
 
 Commands, exact selectors, identities and expected state are in [testing.md](testing.md) and `tests/sites.json`. The generated `output/playwright/runs/<run-id>/<mode>/catalog-report.html` links each selected case’s checkpoints and screenshot, with traces for failures or full-trace audits. Generated evidence stays outside Git. Build, harness, contract and browser-environment fingerprints mark superseded evidence stale. A site counts fully verified only when all three current contracts pass.
 
