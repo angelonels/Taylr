@@ -2,6 +2,82 @@ import { test } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
 import { runLiveSite } from "../scenarios/live.mjs";
 
+// Failure first: YouTube changes pp between visits. Keep the video's v, list
+// and t identity, including when cards reorder and share the same test ID.
+for (const distinct of ["v", "list", "t"]) {
+  test(`Selector identity: YouTube attribution preserves distinct ${distinct}`, async () => {
+    const site = {
+      id: `youtube-attribution-${distinct}`,
+      caseId: "primary",
+      component: "Video result card",
+      url: "https://www.youtube.com/results?search_query=fixture",
+      target: "ytd-video-renderer",
+      targetIndex: 0,
+      keep: "ytd-video-renderer",
+      keepIndex: 1,
+      identity: {
+        self: true,
+        selector: "[data-video-id]",
+        attribute: "data-video-id",
+      },
+    };
+    const instance = await isolatedBrowser(site);
+    let visits = 0;
+    try {
+      await instance.context.route(site.url, (route) => {
+        const visit = ++visits;
+        const card = (chosen: boolean) => {
+          const query = new URLSearchParams({
+            v: !chosen && distinct === "v" ? "OTHER" : "VIDEO",
+            list: !chosen && distinct === "list" ? "OTHER" : "LIST",
+            t: !chosen && distinct === "t" ? "60" : "30",
+            pp: `impression-${visit}`,
+          });
+          return `<ytd-video-renderer data-testid="video" data-video-id="${chosen ? "chosen" : "neighbor"}"><a href="/watch?${query}">${chosen ? "Chosen" : "Neighbor"} video</a></ytd-video-renderer>`;
+        };
+        return route.fulfill({
+          contentType: "text/html",
+          body: `<!doctype html><title>Video attribution</title><style>ytd-video-renderer{display:block;width:480px;height:120px;margin:24px;background:#dde6f9}a{display:block;padding:24px}</style><main>${visit === 1 ? card(true) + card(false) : card(false) + card(true)}</main>`,
+        });
+      });
+      await runLiveSite(instance.context, instance.extensionId, site);
+    } finally {
+      await instance.close();
+    }
+  });
+}
+
+// The same pp key can identify content on another origin. Do not hide its peer.
+test("Selector identity: pp remains meaningful outside YouTube", async () => {
+  const instance = await isolatedBrowser();
+  let visits = 0;
+  try {
+    await instance.context.route(
+      "http://127.0.0.1:5173/pp-identity",
+      (route) => {
+        const chosen =
+          '<a title="Chosen" href="/watch?v=SAME&pp=chosen">Chosen</a>';
+        const neighbor =
+          '<a title="Neighbor" href="/watch?v=SAME&pp=neighbor">Neighbor</a>';
+        return route.fulfill({
+          contentType: "text/html",
+          body: `<!doctype html><title>Literal pp identity</title><style>a{display:block;width:400px;height:100px;margin:24px;background:#dde6f9}</style><main>${++visits === 1 ? chosen + neighbor : neighbor + chosen}</main>`,
+        });
+      },
+    );
+    await runLiveSite(instance.context, instance.extensionId, {
+      id: "pp-query-identity",
+      caseId: "primary",
+      component: "Content query link",
+      url: "http://127.0.0.1:5173/pp-identity",
+      target: 'a[title="Chosen"]',
+      keep: 'a[title="Neighbor"]',
+    });
+  } finally {
+    await instance.close();
+  }
+});
+
 // Failure first: an attribute-less custom card has a stable nested content link.
 // After reload, each card becomes first-of-type in a different scope. Hiding the
 // selected card must neither reveal it nor hide the unrelated first-in-scope card.
