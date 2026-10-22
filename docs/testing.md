@@ -2,6 +2,14 @@
 
 E2E is the test mechanism. Failure scenarios precede implementation; no mirrored unit tests.
 
+## Continuous verification
+
+The [Verify workflow](../.github/workflows/verify.yml) runs on pushes and pull requests using Node.js 22 and disposable Playwright Chromium on Linux. It checks types, lint and formatting before installing Chromium and running the deterministic suite with two workers. The test wrapper performs the build once, owns the fixture server and writes the report/evidence directory. npm downloads and Playwright binaries are cached; system dependencies are installed on each runner. New runs cancel superseded work for the same branch or pull request.
+
+Open a workflow run's **Artifacts** to download `acceptance-<run>-<attempt>` for reports, traces and build diagnostics, including failed test runs. Evidence is retained for seven days. A successful run also provides `taylr-<commit>` containing the unpacked extension for fourteen days. Extract it before using Chrome's **Load unpacked**. This is artifact delivery; store publication is not configured.
+
+The manual **Run workflow** form offers `none`, `canary` or `catalog` for live verification after the local suite. The default runs no public-site cases. Live cases retain the runner's existing outcome semantics: blocked coverage exits 2 and fails that optional gate, rather than claiming a pass. Live work never connects to personal browser data.
+
 ## Isolation
 
 Automated tests launch Playwright’s bundled Chromium in headless mode, with a new temporary data directory and extension copy per test. They never attach to any personal browser, profile, cookies, or credentials. The temporary extension manifest grants only the fixture and selected site’s exact origin; the shipped manifest retains optional per-site permissions. Temporary files and browsers close in teardown. Use the run wrapper to allocate a unique evidence directory. Coordinate commands while editing/building: a running test must never observe a replaced build. Workers inside one command have isolated browsers and artifacts. Run only one top-level browser CLI job at a time. Acceptance runs own their fixture server on port 5173 and refuse an occupied port before cases launch; they never reuse or terminate another process’s server. Stop a development server yourself before running acceptance. A failure-injection child runner uses its parent’s server and does not own a second server lifecycle. Named host locks serialize cases for the same hostname while unrelated sites can run in parallel. `TAYLR_HEADED=1` shows this disposable browser for debugging.
