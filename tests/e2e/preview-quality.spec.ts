@@ -124,7 +124,7 @@ for (const scenario of [
           },
         );
       if (scenario === "entropy")
-        await page.evaluate(() => {
+        await page.evaluate(async () => {
           const canvas = document.createElement("canvas");
           canvas.width = 1024;
           canvas.height = 768;
@@ -136,10 +136,17 @@ for (const scenario of [
             data.data[i] = i % 4 === 3 ? 255 : seed >>> 24;
           }
           ctx.putImageData(data, 0, 0);
+          const pixels = canvas.toDataURL();
+          const image = new Image();
+          image.src = pixels;
+          await image.decode();
           const target = document.querySelector<HTMLElement>("#distraction");
           target.textContent = "";
           target.setAttribute("aria-label", "Detailed graphic");
-          target.style.cssText = `position:fixed;top:0;left:0;width:1024px;height:768px;padding:0;border:0;border-radius:0;background-image:url(${canvas.toDataURL()});display:block!important`;
+          target.style.cssText = `position:fixed;top:0;left:0;width:1024px;height:768px;padding:0;border:0;border-radius:0;background-image:url(${pixels});display:block!important`;
+          await new Promise<void>((resolve) =>
+            requestAnimationFrame(() => resolve()),
+          );
         });
       if (scenario === "zoom") {
         const cdp = await context.newCDPSession(page);
@@ -160,6 +167,12 @@ for (const scenario of [
           };
         });
       await dock.locator("#hide").click();
+      // Registration is asynchronous; target input belongs to the picker only
+      // after its pressed state confirms the real handlers are installed.
+      await expect(dock.locator("#hide")).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
       const storedRule = () =>
         bridge.evaluate(async () => {
           const key = "site:http://127.0.0.1:5173";
@@ -241,6 +254,16 @@ for (const scenario of [
         expect(rule.preview.width).toBe(300);
       }
       if (scenario === "entropy") {
+        const encodings = await worker.evaluate(
+          () =>
+            (
+              globalThis as typeof globalThis & {
+                previewMetrics: { bytes: number }[];
+              }
+            ).previewMetrics,
+        );
+        // A blank early screenshot must not masquerade as a successful encoder test.
+        expect(encodings[0].bytes).toBeGreaterThan(260000);
         expect(rule.preview.width).toBeGreaterThanOrEqual(640);
         expect(rule.preview.dataUrl.length).toBeLessThan(350000);
       }

@@ -11,10 +11,13 @@ import {
   type SiteProfile,
 } from "./model";
 
-// One writer serializes read-modify-write across tabs; storage changes update every page.
+// One writer serializes profile changes across tabs; broadcasts update each controller.
 let pending = Promise.resolve();
 chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
-  if (!message || !["get", "add", "remove", "restore"].includes(message.type))
+  if (
+    !message ||
+    !["get", "add", "remove", "restore", "set-paused"].includes(message.type)
+  )
     return;
   pending = pending.then(async () => {
     try {
@@ -39,7 +42,14 @@ chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
         rules: [],
       };
       let createdRuleId: string | undefined;
+      if (message.type === "set-paused") {
+        if (typeof message.paused !== "boolean")
+          throw new Error("Invalid site setting.");
+        profile.paused = message.paused;
+      }
       if (message.type === "add") {
+        if (profile.paused)
+          throw new Error("Resume this site before hiding elements.");
         if (
           typeof message.selector !== "string" ||
           message.selector.length > 4096 ||
@@ -77,6 +87,14 @@ chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
           delete added.preview;
           await chrome.storage[storageArea()].set({ [key]: profile });
         }
+        let setupError: unknown;
+        if (message.type === "set-paused" && !message.paused) {
+          try {
+            await registerOrigin(message.origin);
+          } catch (error) {
+            setupError = error;
+          }
+        }
         const tabs = await chrome.tabs.query({ url: `${message.origin}/*` });
         await Promise.allSettled(
           tabs
@@ -84,10 +102,21 @@ chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
               (tab) =>
                 tab.incognito === chrome.extension.inIncognitoContext && tab.id,
             )
-            .map((tab) =>
-              chrome.tabs.sendMessage(tab.id!, { type: "profile", profile }),
-            ),
+            .map(async (tab) => {
+              // Ensure a controller exists even if earlier setup failed, then
+              // resume saved rules in this tab as well as mounted panels.
+              if (message.type === "set-paused" && !message.paused)
+                await chrome.scripting.executeScript({
+                  target: { tabId: tab.id! },
+                  files: ["content.js"],
+                });
+              await chrome.tabs.sendMessage(tab.id!, {
+                type: "profile",
+                profile,
+              });
+            }),
         );
+        if (setupError) throw setupError;
       }
       reply({ profile, createdRuleId });
     } catch (error) {
@@ -101,6 +130,8 @@ chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
 });
 
 const registering = new Map<string, Promise<void>>();
+const scriptId = (origin: string) =>
+  `site-${encodeURIComponent(origin).replace(/%/g, "_")}`;
 function registerOrigin(origin: string) {
   let operation = registering.get(origin);
   if (!operation) {
@@ -117,8 +148,10 @@ async function registerScript(origin: string) {
     throw new Error("Open a website to use Taylr.");
   const match = `${origin}/*`;
   if (!(await chrome.permissions.contains({ origins: [match] })))
-    throw new Error("Click Taylr’s icon and allow access to this site.");
-  const id = `site-${encodeURIComponent(origin).replace(/%/g, "_")}`;
+    throw new Error(
+      "Use Chrome’s extension settings to allow access to this site.",
+    );
+  const id = scriptId(origin);
   if (
     !(await chrome.scripting.getRegisteredContentScripts({ ids: [id] })).length
   )
@@ -133,7 +166,7 @@ async function registerScript(origin: string) {
     ]);
 }
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
-  if (message?.type !== "register") return;
+  if (!["register", "chrome-access"].includes(message?.type)) return;
   void (async () => {
     try {
       const trustedPage = sender.url?.startsWith(chrome.runtime.getURL(""));
@@ -144,7 +177,11 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
         new URL(sender.url).origin === message.origin;
       if (!trustedPage && !ownSite)
         throw new Error("This page cannot change another site.");
-      await registerOrigin(message.origin);
+      if (message.type === "chrome-access")
+        await chrome.tabs.create({
+          url: `chrome://extensions/?id=${chrome.runtime.id}`,
+        });
+      else await registerOrigin(message.origin);
       reply({ ok: true });
     } catch (error) {
       reply({
@@ -157,8 +194,8 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   })();
   return true;
 });
-// Chrome does not await action listeners. The opening module preserves the
-// original permission gesture and serializes explicit toggles for each tab.
+// Chrome does not await action listeners. Opening checks installation grants
+// and serializes explicit toggles for each tab.
 // oxlint-disable-next-line typescript/no-misused-promises
 chrome.action.onClicked.addListener((tab) =>
   openTools(tab, registerOrigin).catch(() => {}),

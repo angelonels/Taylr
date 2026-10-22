@@ -1,0 +1,65 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      live:
+        description: Optional public-site verification after the local suite
+        type: choice
+        options: [none, canary, catalog]
+        default: none
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Check types and lint
+        run: npm run check
+      - name: Check formatting
+        run: npm run format:check
+      - name: Cache disposable Chromium binaries
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: chromium-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+      # The wrapper builds once, then owns the fixture server and evidence root.
+      - name: Build and run local browser acceptance
+        run: npm run test:e2e -- --workers=2
+      - name: Run optional public-site acceptance
+        if: github.event_name == 'workflow_dispatch' && inputs.live != 'none'
+        env:
+          LIVE_SCOPE: ${{ inputs.live }}
+        run: node scripts/run-tests.mjs "$LIVE_SCOPE" --workers=2
+      - name: Upload reports, traces and build diagnostics
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: acceptance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: output/playwright/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload verified unpacked extension
+        uses: actions/upload-artifact@v7
+        with:
+          name: taylr-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14

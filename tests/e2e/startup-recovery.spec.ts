@@ -49,22 +49,29 @@ for (const scenario of [
       await worker.evaluate((scenario) => {
         const state = globalThis as typeof globalThis & {
           startupMetrics: {
-            permissions: number;
+            permissionRequests: number;
+            permissionChecks: number;
             reloads: number;
             contentAttempts: number;
             notices: string[];
           };
         };
         const metrics = (state.startupMetrics = {
-          permissions: 0,
+          permissionRequests: 0,
+          permissionChecks: 0,
           reloads: 0,
           contentAttempts: 0,
           notices: [],
         });
         const request = chrome.permissions.request.bind(chrome.permissions);
         chrome.permissions.request = async (options) => {
-          metrics.permissions++;
+          metrics.permissionRequests++;
           return request(options);
+        };
+        const contains = chrome.permissions.contains.bind(chrome.permissions);
+        chrome.permissions.contains = async (options) => {
+          metrics.permissionChecks++;
+          return contains(options);
         };
         chrome.tabs.reload = async () => {
           metrics.reloads++;
@@ -144,7 +151,8 @@ for (const scenario of [
           (
             globalThis as typeof globalThis & {
               startupMetrics: {
-                permissions: number;
+                permissionRequests: number;
+                permissionChecks: number;
                 reloads: number;
                 contentAttempts: number;
                 notices: string[];
@@ -161,7 +169,8 @@ for (const scenario of [
         }),
         contentType: "application/json",
       });
-      expect(metrics.permissions).toBe(1);
+      expect(metrics.permissionRequests).toBe(0);
+      expect(metrics.permissionChecks).toBeGreaterThan(0);
       expect(metrics.reloads).toBe(0);
       if (
         ["cross-origin", "early-cross-origin", "denied", "exhausted"].includes(

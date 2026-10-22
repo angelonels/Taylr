@@ -20,6 +20,7 @@ function linkSelector(tag: string, value: string): string {
     .split("&")
     .filter(Boolean);
   let productAttribution = false;
+  let videoAttribution = false;
   try {
     const url = new URL(value, location.href);
     // These observed per-visit values are attribution only on Flipkart product
@@ -28,6 +29,12 @@ function linkSelector(tag: string, value: string): string {
       /^(www\.)?flipkart\.com$/.test(url.hostname) &&
       /\/p\/itm[a-z0-9]+\/?$/i.test(url.pathname) &&
       !!url.searchParams.get("pid");
+    // Observed YouTube search impressions change pp for the same video.
+    // Retain every other query value, including playlist and playback position.
+    videoAttribution =
+      /^(www\.)?youtube\.com$/.test(url.hostname) &&
+      url.pathname === "/watch" &&
+      !!url.searchParams.get("v");
   } catch {
     // Non-URL hrefs retain their exact identity.
   }
@@ -36,7 +43,9 @@ function linkSelector(tag: string, value: string): string {
     (parameter) =>
       !/^(utm_[^=]*|fbclid|gclid|source_impression_id|federated_search_id|previous_page_section_name)=/i.test(
         parameter,
-      ) && !(productAttribution && /^(iid|ssid|ppt|ppn)=/i.test(parameter)),
+      ) &&
+      !(productAttribution && /^(iid|ssid|ppt|ppn)=/i.test(parameter)) &&
+      !(videoAttribution && /^pp=/i.test(parameter)),
   );
   if (stable.length === parameters.length)
     return `${tag}[href=${CSS.escape(value)}]`;

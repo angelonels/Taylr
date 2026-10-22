@@ -22,11 +22,8 @@ export function usePosition(open: boolean) {
     y = useMotionValue(0);
   const transform = useMotionTemplate`translate3d(${x}px, ${y}px, 0)`;
   const reduced = useReducedMotion();
-  const [edge, setEdge] = useState<"top" | "bottom">("bottom");
-  const edgeRef = useRef<"top" | "bottom">("bottom");
   const [dragging, setDragging] = useState(false);
   const initialized = useRef(false);
-  const height = useRef(0);
   const animation = useRef<AnimationPlaybackControls[]>([]);
   const gesture = useRef<{
     id: number;
@@ -68,13 +65,6 @@ export function usePosition(open: boolean) {
     const b = bounds();
     nextX = clamp(nextX, b.left, b.right);
     nextY = clamp(nextY, b.top, b.bottom);
-    const nextEdge =
-      nextY + (ref.current?.getBoundingClientRect().height ?? 0) / 2 >
-      b.top + b.height / 2
-        ? "bottom"
-        : "top";
-    edgeRef.current = nextEdge;
-    setEdge(nextEdge);
     if (spring && !reduced) {
       animation.current = [
         animate(x, nextX, {
@@ -100,21 +90,24 @@ export function usePosition(open: boolean) {
     const element = ref.current;
     const fit = () => {
       const viewport = window.visualViewport;
-      element.style.maxWidth = `${Math.max(240, (viewport?.width ?? innerWidth) - 32)}px`;
-      const box = element.getBoundingClientRect(),
-        b = bounds();
+      element.style.maxWidth = `${Math.max(0, (viewport?.width ?? innerWidth) - 32)}px`;
+      const availableHeight = Math.max(
+        0,
+        (viewport?.height ?? innerHeight) - 32,
+      );
+      element.style.maxHeight = `${availableHeight}px`;
+      // Scroll the whole instrument only when the viewport cannot fit its tools.
+      element.dataset.short = String(availableHeight < 400);
+      const b = bounds();
       if (!initialized.current) {
-        x.set((b.width - box.width) / 2 + (viewport?.offsetLeft ?? 0));
-        y.set(Math.max(b.top, b.bottom));
+        x.set(Math.max(b.left, b.right));
+        y.set(b.top);
         initialized.current = true;
       } else {
-        if (edgeRef.current === "bottom" && height.current)
-          y.set(y.get() - (box.height - height.current));
         cancelAnimation();
         x.set(clamp(x.get(), b.left, b.right));
         y.set(clamp(y.get(), b.top, b.bottom));
       }
-      height.current = box.height;
     };
     fit();
     const observer = new ResizeObserver(fit);
@@ -180,8 +173,11 @@ export function usePosition(open: boolean) {
     }
     const b = bounds();
     place(
-      x.get(),
-      edge === "bottom" ? b.top : b.bottom,
+      x.get() + (ref.current?.getBoundingClientRect().width ?? 0) / 2 >
+        b.left + b.width / 2
+        ? b.left
+        : b.right,
+      y.get(),
       0,
       0,
       event.detail !== 0,
@@ -198,8 +194,7 @@ export function usePosition(open: boolean) {
     event.preventDefault();
     event.stopPropagation();
     const b = bounds();
-    if (event.key === "Home")
-      place((b.width - (ref.current?.offsetWidth ?? 0)) / 2, b.bottom);
+    if (event.key === "Home") place(b.right, b.top);
     else
       place(
         x.get() +
@@ -215,7 +210,6 @@ export function usePosition(open: boolean) {
   return {
     ref,
     transform,
-    edge,
     dragging,
     grip: {
       onPointerDown: pointerDown,

@@ -17,9 +17,18 @@ function Icon({
   name,
 }: {
   name:
-    "hide" | "undo" | "rules" | "close" | "up" | "down" | "grip" | "restore";
+    | "hide"
+    | "undo"
+    | "rules"
+    | "close"
+    | "up"
+    | "down"
+    | "grip"
+    | "restore"
+    | "site";
 }) {
   const paths = {
+    site: "M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7l-9-4Z",
     hide: "M4 9V4h5m6 0h5v5m0 6v5h-5M9 20H4v-5M8 12h8",
     undo: "M9 5 4 10l5 5M4 10h9a6 6 0 0 1 0 12",
     rules: "M8 5h12M8 12h12M8 19h12M3 5h.01M3 12h.01M3 19h.01",
@@ -40,34 +49,6 @@ function Icon({
       strokeLinejoin="round"
     >
       <path d={paths[name]} />
-    </svg>
-  );
-}
-function Mark() {
-  return (
-    <svg aria-hidden="true" className="mark" viewBox="0 0 32 32">
-      <defs>
-        <linearGradient
-          id="taylr-ribbon"
-          x1="8"
-          y1="4"
-          x2="26"
-          y2="30"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#e3dcff" />
-          <stop offset="1" stopColor="#9475f0" />
-        </linearGradient>
-      </defs>
-      <path d="M3 5h26l-6 7h-5v13l-7 5V12H3Z" fill="url(#taylr-ribbon)" />
-      <path d="M18 5h11l-6 7h-5Z" fill="#7c5bd1" />
-      <path d="M11 12h7v13l-7 5Z" fill="#c2b1ff" />
-      <path
-        d="M4 5.5h24M11.5 13v15"
-        fill="none"
-        stroke="#fff"
-        strokeOpacity=".4"
-      />
     </svg>
   );
 }
@@ -94,6 +75,7 @@ function Dock({
     inspector.getSnapshot,
   );
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [siteOpen, setSiteOpen] = useState(false);
   const [keyboard, setKeyboard] = useState(false);
   const hideRef = useRef<HTMLButtonElement>(null),
     rulesRef = useRef<HTMLButtonElement>(null);
@@ -102,12 +84,16 @@ function Dock({
   useEffect(() => {
     if (state.open) {
       if (!host.matches(":popover-open")) host.showPopover();
-      hideRef.current?.focus({ preventScroll: true });
+      (hideRef.current?.disabled
+        ? host.shadowRoot?.querySelector<HTMLElement>("#site-toggle")
+        : hideRef.current
+      )?.focus({ preventScroll: true });
     } else {
       if (host.matches(":popover-open")) host.hidePopover();
       // Synchronize disclosure state with the external inspector closing.
       // oxlint-disable-next-line react/set-state-in-effect
       setRulesOpen(false);
+      setSiteOpen(false);
     }
   }, [state.open, host]);
   useEffect(() => {
@@ -118,13 +104,11 @@ function Dock({
   }, [state.focusSerial, state.busy, rulesOpen]);
   if (!state.open) return null;
   const rules = state.profile.rules;
-  const details = state.picking || rulesOpen || state.error;
+  const details = state.picking || rulesOpen || siteOpen || state.error;
   return (
     <motion.div
       ref={positionRef}
       className="dock"
-      data-edge={position.edge}
-      data-expanded={details}
       data-dragging={position.dragging}
       data-keyboard={keyboard}
       style={{ transform: position.transform }}
@@ -138,29 +122,40 @@ function Dock({
       }}
     >
       <div
-        className="bar flex items-center gap-1"
+        className="bar flex flex-col gap-1"
         role="toolbar"
         aria-label="Taylr"
+        aria-orientation="vertical"
       >
-        <Tool
-          id="move"
-          label="Move toolbar"
-          className="grip"
-          title="Drag to move · click to switch edge · arrow keys to move · Home to reset"
-          {...position.grip}
-        >
-          <Icon name="grip" />
-        </Tool>
-        <span className="brand" title="Taylr">
-          <Mark />
-        </span>
-        <span className="site min-w-0 flex-1">
-          <strong title={location.hostname}>{location.hostname}</strong>
-          <small>
-            {chrome.extension.inIncognitoContext ? "Private · " : ""}
-            {rules.length ? `${rules.length} hidden` : "Taylr"}
-          </small>
-        </span>
+        <div className="panel-header flex items-center gap-1">
+          <Tool
+            id="move"
+            label="Move toolbar"
+            className="grip"
+            title="Drag to move · click to switch edge · arrow keys to move · Home to reset"
+            {...position.grip}
+          >
+            <Icon name="grip" />
+          </Tool>
+          <span className="site min-w-0 flex-1">
+            <strong title={location.hostname}>{location.hostname}</strong>
+            <small>
+              {chrome.extension.inIncognitoContext ? "Private · " : ""}
+              {state.profile.paused
+                ? "Taylr · Paused"
+                : rules.length
+                  ? `Taylr · ${rules.length} hidden`
+                  : "Taylr"}
+            </small>
+          </span>
+          <Tool
+            id="close"
+            label="Close Taylr"
+            onClick={() => inspector.close()}
+          >
+            <Icon name="close" />
+          </Tool>
+        </div>
         <button
           id="hide"
           ref={hideRef}
@@ -168,9 +163,10 @@ function Dock({
           className="primary flex items-center justify-center gap-2"
           aria-pressed={state.picking}
           aria-busy={state.busy}
-          disabled={state.busy}
+          disabled={state.busy || state.profile.paused}
           onClick={() => {
             setRulesOpen(false);
+            setSiteOpen(false);
             if (state.picking) inspector.stop();
             else void inspector.start();
           }}
@@ -185,6 +181,7 @@ function Dock({
           onClick={() => void inspector.undo()}
         >
           <Icon name="undo" />
+          <span>Undo</span>
         </Tool>
         <Tool
           id="rules-toggle"
@@ -194,18 +191,60 @@ function Dock({
           aria-controls="taylr-rules"
           onClick={() => {
             if (state.picking) inspector.stop();
+            setSiteOpen(false);
             setRulesOpen(!rulesOpen);
           }}
         >
           <Icon name="rules" />
+          <span>Rules</span>
           {rules.length > 0 && <span className="count">{rules.length}</span>}
         </Tool>
-        <Tool id="close" label="Close Taylr" onClick={() => inspector.close()}>
-          <Icon name="close" />
+        <Tool
+          id="site-toggle"
+          label="Site"
+          aria-expanded={siteOpen}
+          aria-controls="taylr-site"
+          onClick={() => {
+            if (state.picking) inspector.stop();
+            setRulesOpen(false);
+            setSiteOpen(!siteOpen);
+          }}
+        >
+          <Icon name="site" />
+          <span>Site</span>
         </Tool>
       </div>
       {details && (
         <div className="details">
+          {siteOpen && (
+            <section id="taylr-site" aria-label="Site access">
+              <h2>{state.profile.paused ? "Site paused" : "Site active"}</h2>
+              <p className="empty">
+                {state.profile.paused
+                  ? "Taylr stops selecting and hiding here. Saved rules are kept."
+                  : "Pause Taylr on this site to reveal hidden elements and stop selection."}
+              </p>
+              <button
+                id="site-pause"
+                type="button"
+                disabled={state.busy}
+                onClick={() => void inspector.setPaused(!state.profile.paused)}
+              >
+                {state.profile.paused ? "Resume site" : "Pause site"}
+              </button>
+              <p className="empty">
+                Pause controls Taylr. Change browser permissions in Chrome’s
+                site access settings.
+              </p>
+              <button
+                id="chrome-access"
+                type="button"
+                onClick={() => void inspector.openAccessSettings()}
+              >
+                Chrome access settings
+              </button>
+            </section>
+          )}
           {state.picking && (
             <section aria-label="Taylr Hide" className="inspector">
               <div className="flex items-center justify-between gap-3">
@@ -268,7 +307,9 @@ function Dock({
             <section id="taylr-rules" aria-label="Hidden elements">
               <div className="rules-heading flex items-center justify-between gap-3">
                 <h2>
-                  {rules.length ? `${rules.length} hidden` : "Nothing hidden"}
+                  {rules.length
+                    ? `${rules.length} ${state.profile.paused ? "saved" : "hidden"}`
+                    : "Nothing hidden"}
                 </h2>
                 <button
                   type="button"
@@ -279,6 +320,12 @@ function Dock({
                   Restore all
                 </button>
               </div>
+              {!rules.length && (
+                <p className="empty">
+                  Choose Hide, then select an element on the page. Its rule will
+                  appear here.
+                </p>
+              )}
               <ul id="rules" className="m-0 list-none p-0">
                 {rules.map((rule) => (
                   <li key={rule.id} className="rule">

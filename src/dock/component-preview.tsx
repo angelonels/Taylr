@@ -57,10 +57,10 @@ export function ComponentPreview({ rule }: { rule: HideRule }) {
               <span>
                 {preview.partial ? "Visible area" : "Captured before hiding"}
               </span>
-              <span className="text-[#d3c6ff] group-data-[expanded=true]:hidden">
+              <span className="text-[#e8e6df] group-data-[expanded=true]:hidden">
                 Expand ↗
               </span>
-              <span className="hidden text-[#d3c6ff] group-data-[expanded=true]:inline">
+              <span className="hidden text-[#e8e6df] group-data-[expanded=true]:inline">
                 Collapse ↙
               </span>
             </span>
@@ -105,7 +105,7 @@ export function ComponentPreview({ rule }: { rule: HideRule }) {
           )}
         </div>
       ) : (
-        <div className="rounded-[14px] border border-white/8 bg-linear-to-br from-[#b4a3ff]/10 to-white/3 p-4">
+        <div className="rounded-[14px] border border-white/8 bg-white/4 p-4">
           <div className="mb-2 flex items-center justify-between gap-2 text-[10px] text-[#c0c2cf]">
             <span>Text preview</span>
             <span>
@@ -113,7 +113,7 @@ export function ComponentPreview({ rule }: { rule: HideRule }) {
               {summary ? ` · ${summary.width} × ${summary.height}` : ""}
             </span>
           </div>
-          <p className="m-0 line-clamp-3 text-[13px] leading-[1.6] text-[#eeebf8]">
+          <p className="m-0 line-clamp-3 text-[13px] leading-[1.6] text-[#f0efea]">
             {summary?.text || rule.label}
           </p>
         </div>

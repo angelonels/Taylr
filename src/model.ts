@@ -23,9 +23,11 @@ export interface SiteProfile {
   version: 1;
   origin: string;
   rules: HideRule[];
+  paused?: boolean;
 }
 export type Request =
   | { type: "get" | "restore"; origin: string }
+  | { type: "set-paused"; origin: string; paused: boolean }
   | {
       type: "add";
       origin: string;

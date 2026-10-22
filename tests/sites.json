@@ -14,10 +14,10 @@
         "targetIndex": 0,
         "keepIndex": 1,
         "id": "primary",
-        "purpose": "Hide exactly one nested video card without opening or playing it; retain neighboring results.",
+        "purpose": "Hide exactly one nested video card without opening or playing it; retain neighboring results. Track its unique title independently of changing href impression attribution; selector regressions separately preserve video, playlist and playback-position identity.",
         "identity": {
           "selector": "a#video-title[href]",
-          "attribute": "href"
+          "attribute": "title"
         }
       },
       {

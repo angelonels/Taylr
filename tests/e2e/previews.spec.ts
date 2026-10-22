@@ -54,6 +54,10 @@ for (const change of ["reflow", "scroll", "disconnect"]) {
         { url: page.url(), change },
       );
       await dock.locator("#hide").click();
+      await expect(dock.locator("#hide")).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
       await page.locator("#distraction").click();
       await expect(page.locator("html")).toHaveAttribute(
         "data-captured",
@@ -100,6 +104,10 @@ for (const capture of [true, false]) {
       await page.goto("http://127.0.0.1:5173/tests/fixture.html");
       const dock = await openDock(context, bridge, page);
       await dock.locator("#hide").click();
+      await expect(dock.locator("#hide")).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
       await page.locator("#distraction").click();
       await expect(page.locator("#distraction")).toBeHidden();
       await dock.locator("#rules-toggle").click();
@@ -175,6 +183,7 @@ test("Preview isolation: CSP, inactive page, and storage pressure", async () => 
     });
     const dock = await openDock(context, bridge, page);
     await dock.locator("#hide").click();
+    await expect(dock.locator("#hide")).toHaveAttribute("aria-pressed", "true");
     await page.locator("#distraction").click();
     await expect(page.locator("#distraction")).toBeHidden();
     await dock.locator("#rules-toggle").click();
@@ -216,6 +225,7 @@ test("Preview isolation: CSP, inactive page, and storage pressure", async () => 
       };
     });
     await dock.locator("#hide").click();
+    await expect(dock.locator("#hide")).toHaveAttribute("aria-pressed", "true");
     await page.locator("#distraction").click();
     await expect(page.locator("#distraction")).toBeHidden();
     await dock.locator("#rules-toggle").click();
@@ -246,6 +256,7 @@ test("Paused animation frames: preview deadline still saves Hide", async () => {
     await page.goto("http://127.0.0.1:5173/tests/fixture.html");
     const dock = await openDock(context, bridge, page);
     await dock.locator("#hide").click();
+    await expect(dock.locator("#hide")).toHaveAttribute("aria-pressed", "true");
     await bridge.evaluate(async (url) => {
       const tab = (await chrome.tabs.query({})).find((t) => t.url === url);
       await chrome.scripting.executeScript({

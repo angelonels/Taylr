@@ -2,6 +2,8 @@
 
 Research date: 2026-10-22. Taylr changes arbitrary third-party pages. Controlled browser fixtures provide a reliable development gate; a deliberately difficult public-site catalog measures compatibility. Neither substitutes for the other. Commands and evidence interpretation live in [the testing guide](../testing.md); current site acceptance belongs in [the matrix](../site-test-matrix.md).
 
+Historical permission context: the permission discussion and startup request counts below record the earlier optional per-origin design. The later installation grant and Site pause controls supersede that model; see [current decisions](../decisions.md#2026-10-22-installation-access-and-reversible-site-pause) and [current acceptance](../testing.md).
+
 ## Lasting decisions
 
 - Grow coverage by **failure family**, not website count: recycled cards, nested controls, SVG/canvas, scrolling and reflow, portals, shadow DOM, iframes, SPA navigation, semantic identity, responsive layouts, private storage, worker restart, permissions and capture contention. Reproduce each new mechanism in the smallest real-browser fixture before fixing it; retain all six live checkpoints. [Playwright best practices](https://playwright.dev/docs/best-practices)
