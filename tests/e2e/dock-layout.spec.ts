@@ -178,3 +178,72 @@ test("Dock layout: six widths, native 200% zoom, edge expansion and reduced moti
     await instance.close();
   }
 });
+
+// Review failure contracts: many rules must scroll below the fixed header at
+// ordinary heights; an unbroken selection label must remain inside the panel.
+test("Panel overflow: long rule list and unbroken selection label", async () => {
+  const instance = await isolatedBrowser();
+  const { context, extensionId } = instance;
+  await context.tracing.start({
+    screenshots: true,
+    snapshots: true,
+    sources: true,
+  });
+  try {
+    const bridge = await driver(context, extensionId);
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("http://127.0.0.1:5173/tests/fixture.html");
+    await bridge.evaluate(async () => {
+      const origin = "http://127.0.0.1:5173";
+      await chrome.storage.local.set({
+        [`site:${origin}`]: {
+          version: 1,
+          origin,
+          rules: Array.from({ length: 12 }, (_, i) => ({
+            id: `overflow-${i}`,
+            selector: `#absent-${i}`,
+            label: `Hidden component ${i}`,
+            createdAt: Date.now(),
+          })),
+        },
+      });
+    });
+    const dock = await openDock(context, bridge, page);
+    await dock.locator("#rules-toggle").click();
+    await expect(dock.locator(".rule")).toHaveCount(12);
+    const header = await dock.locator(".bar").boundingBox();
+    const lastRestore = dock.locator(".rule button").last();
+    await lastRestore.scrollIntoViewIfNeeded();
+    await expect(lastRestore).toBeInViewport();
+    expect((await dock.locator(".bar").boundingBox()).y).toBe(header.y);
+    await expect(dock.locator("#close")).toBeInViewport();
+    await lastRestore.click();
+    await expect(dock.locator(".rule")).toHaveCount(11);
+    await dock.locator("#rules-toggle").click();
+    await page.evaluate(() => {
+      document
+        .querySelector("#distraction")
+        .setAttribute("aria-label", "X".repeat(500));
+    });
+    await dock.locator("#hide").click();
+    await expect(dock.locator("#hide")).toHaveAttribute("aria-pressed", "true");
+    await page.locator("#distraction").hover();
+    await expect(dock.locator("#selection-text")).toContainText("X".repeat(80));
+    const label = await dock.locator("#selection-text").boundingBox();
+    const panel = await dock.locator(".dock").boundingBox();
+    expect(label.x).toBeGreaterThanOrEqual(panel.x);
+    expect(label.x + label.width).toBeLessThanOrEqual(panel.x + panel.width);
+    expect(
+      await dock
+        .locator("#selection-text")
+        .evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+    ).toBe(true);
+    await page.screenshot({ path: evidencePath("panel-overflow.png") });
+  } finally {
+    await context.tracing.stop({
+      path: evidencePath("panel-overflow-trace.zip"),
+    });
+    await instance.close();
+  }
+});

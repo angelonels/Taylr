@@ -53,6 +53,9 @@ test("Startup: focused Hide retains contrast on first open and reopen", async ()
     await hide.press("Enter");
     await expect(hide).toHaveAttribute("aria-pressed", "true");
     await checkContrast();
+    // Pointer hover must preserve coral picking feedback after clicking Hide.
+    await hide.hover();
+    await expect(hide).toHaveCSS("background-color", "rgb(255, 178, 162)");
     await page.keyboard.press("Escape");
     await dock.locator("#close").click();
     await invokeAction(context, bridge, page);

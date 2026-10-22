@@ -198,6 +198,9 @@ kbd {
   .primary:not(:disabled):hover {
     background-color: #f4f2ec;
   }
+  .primary[aria-pressed="true"]:not(:disabled):hover {
+    background-color: #ffb2a2;
+  }
 }
 @media (prefers-reduced-motion: no-preference) {
   .dock:not([data-keyboard="true"]) button:not(:disabled):active {
