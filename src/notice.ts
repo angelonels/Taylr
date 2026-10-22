@@ -10,7 +10,7 @@ const copy: Record<string, [string, string]> = {
   ],
   denied: [
     "Site access is unavailable",
-    "Click Taylr’s icon and allow access to this website. Chrome may restrict access on managed pages.",
+    "Use Chrome’s extension settings to allow access to this website. Chrome may restrict access on managed pages.",
   ],
 };
 const content = reason ? copy[reason] : undefined;

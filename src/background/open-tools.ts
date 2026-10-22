@@ -37,7 +37,8 @@ function protectedPage(url: URL) {
   );
 }
 
-// Request access before entering the queue: Chrome requires the toolbar gesture.
+// Installation grants host access. Respect browser-withheld access without
+// replacing the user's choice with a per-site permission request.
 export function openTools(
   tab: chrome.tabs.Tab,
   register: (origin: string) => Promise<void>,
@@ -51,7 +52,7 @@ export function openTools(
   }
   if (protectedPage(url)) return notice(tab, "protected");
   const access = chrome.permissions
-    .request({ origins: [`${url.origin}/*`] })
+    .contains({ origins: [`${url.origin}/*`] })
     .catch(() => false);
   const operation = (opening.get(tab.id) ?? Promise.resolve())
     .catch(() => {})

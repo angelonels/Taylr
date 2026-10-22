@@ -25,6 +25,8 @@ export interface Inspector {
   parent(): void;
   child(): void;
   restore(id?: string): Promise<void>;
+  setPaused(paused: boolean): Promise<void>;
+  openAccessSettings(): Promise<void>;
 }
 declare global {
   interface Window {

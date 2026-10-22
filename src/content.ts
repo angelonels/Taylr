@@ -90,8 +90,9 @@ function createInspector(): Inspector {
   }
   function apply(next: SiteProfile) {
     profile = next;
+    if (profile.paused) stop();
     mountStyle();
-    const css = profile.rules
+    const css = (profile.paused ? [] : profile.rules)
       .map((rule) => `${rule.selector} { display: none !important; }`)
       .join("\n");
     style.textContent = css;
@@ -192,7 +193,7 @@ function createInspector(): Inspector {
     publish();
   }
   async function start() {
-    if (busy || picker || !open) return;
+    if (busy || picker || !open || profile.paused) return;
     const revision = openRevision;
     busy = true;
     status = "";
@@ -204,7 +205,7 @@ function createInspector(): Inspector {
         origin: location.origin,
       });
       if (registration?.error) throw new Error(registration.error);
-      if (!open || revision !== openRevision) return;
+      if (!open || revision !== openRevision || profile.paused) return;
       picker = new AbortController();
       const { signal } = picker;
       sessionIds = [];
@@ -380,6 +381,43 @@ function createInspector(): Inspector {
       publish();
     }
   }
+  async function setPaused(paused: boolean) {
+    if (busy) return;
+    busy = true;
+    status = "";
+    error = false;
+    publish();
+    try {
+      await request({ type: "set-paused", origin: location.origin, paused });
+      await rendering;
+      if (!renderFailed)
+        status = paused
+          ? "Site paused. Saved rules are kept."
+          : "Site resumed.";
+    } catch (cause) {
+      status =
+        cause instanceof Error
+          ? cause.message
+          : "Could not update this site. Try again.";
+      error = true;
+    } finally {
+      busy = false;
+      publish();
+    }
+  }
+  async function openAccessSettings() {
+    try {
+      const result = await chrome.runtime.sendMessage({
+        type: "chrome-access",
+        origin: location.origin,
+      });
+      if (result?.error) throw new Error(result.error);
+    } catch {
+      status = "Open Chrome’s extension settings to change site access.";
+      error = true;
+      publish();
+    }
+  }
   window.addEventListener(
     "keydown",
     (event) => {
@@ -432,7 +470,7 @@ function createInspector(): Inspector {
       publish();
     }
     if (message.type === "access-denied") {
-      status = "Click Taylr’s icon and allow access to this site.";
+      status = "Use Chrome’s extension settings to allow access to this site.";
       error = true;
       publish();
     }
@@ -481,5 +519,7 @@ function createInspector(): Inspector {
     parent,
     child,
     restore,
+    setPaused,
+    openAccessSettings,
   };
 }

@@ -14,6 +14,7 @@ export async function isolatedBrowser(
     actionTimeout = 15000,
     navigationTimeout = 45000,
     nativeAction = false,
+    productionPermissions = false,
     deviceScaleFactor = 1,
     browserArgs = [],
   } = {},
@@ -26,21 +27,23 @@ export async function isolatedBrowser(
     const manifest = JSON.parse(
       await readFile(join(extension, "manifest.json"), "utf8"),
     );
-    // Test-only install grants exact test origins without native permission UI. Production stays optional.
-    manifest.host_permissions = nativeAction
-      ? []
-      : capture
-        ? ["<all_urls>"]
-        : [
-            ...new Set([
-              "http://127.0.0.1:5173/*",
-              ...(site
-                ? [new URL(site.url).origin, ...(site.origins ?? [])].map(
-                    (origin) => origin + "/*",
-                  )
-                : []),
-            ]),
-          ];
+    // Most tests narrow host access to their fixture. Permission acceptance keeps
+    // the generated production manifest intact in a disposable browser.
+    if (!productionPermissions)
+      manifest.host_permissions = nativeAction
+        ? []
+        : capture
+          ? ["<all_urls>"]
+          : [
+              ...new Set([
+                "http://127.0.0.1:5173/*",
+                ...(site
+                  ? [new URL(site.url).origin, ...(site.origins ?? [])].map(
+                      (origin) => origin + "/*",
+                    )
+                  : []),
+              ]),
+            ];
     if (nativeAction)
       manifest.commands = {
         _execute_action: {
@@ -99,11 +102,13 @@ chrome.permissions.request = async permissions => (await chrome.permissions.cont
         deviceScaleFactor,
         locale: "en-US",
         timezone: "UTC",
-        permissionModel: nativeAction
-          ? "native-activeTab"
-          : capture
-            ? "test-all-origins"
-            : "test-exact-origins",
+        permissionModel: productionPermissions
+          ? "production-host-grants"
+          : nativeAction
+            ? "native-activeTab"
+            : capture
+              ? "test-all-origins"
+              : "test-exact-origins",
         manifestHash,
         browserArgs,
         actionTimeout,

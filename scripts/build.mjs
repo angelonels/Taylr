@@ -50,7 +50,7 @@ await writeFile(
       version,
       description: "Hide page elements and restore them later.",
       permissions: ["activeTab", "scripting", "storage"],
-      optional_host_permissions: ["https://*/*", "http://*/*"],
+      host_permissions: ["https://*/*", "http://*/*"],
       background: { service_worker: "background.js" },
       action: {
         default_title: "Open Taylr",
