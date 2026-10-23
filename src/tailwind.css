@@ -17,11 +17,11 @@
   box-sizing: border-box;
 }
 .dock {
-  --ink: #f3f4f6;
-  --muted: #b9bdc8;
+  --ink: #ffffff;
+  --muted: #f0f4fa;
   --coral: #ffac9c;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  @apply fixed left-0 top-0 flex w-[280px] max-w-[calc(100vw-32px)] pointer-events-auto flex-col rounded-[24px] border border-white/15 bg-[#16181d]/85 text-[var(--ink)] isolate overflow-hidden text-start;
+  @apply fixed left-0 top-0 flex w-[280px] max-w-[calc(100vw-32px)] pointer-events-auto flex-col rounded-[24px] border border-white/25 bg-[#121923]/28 text-[var(--ink)] isolate overflow-hidden text-start;
   font:
     400 13px/1.4 -apple-system,
     BlinkMacSystemFont,
@@ -29,18 +29,20 @@
     sans-serif;
   font-optical-sizing: auto;
   direction: ltr;
+  text-shadow: 0 1px 2px #0005;
   background-image: linear-gradient(
     145deg,
-    #ffffff0d,
-    transparent 45%,
-    #ffffff03
+    #ffffff1a,
+    #ffffff03 38%,
+    #ffffff08
   );
-  backdrop-filter: blur(32px) saturate(1.6);
+  backdrop-filter: blur(12px) saturate(1.65) brightness(0.52);
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.65),
-    0 18px 48px -12px rgba(0, 0, 0, 0.65),
-    inset 0 1px rgba(255, 255, 255, 0.18),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.11);
+    0 0 0 1px #07101a26,
+    0 18px 48px -12px #07101a66,
+    inset 0 1px 1px #ffffff66,
+    inset 1px 0 #ffffff20,
+    inset 0 -1px 1px #ffffff16;
 }
 .bar {
   @apply p-[10px] min-h-0;
@@ -120,17 +122,19 @@ button svg {
 }
 .primary {
   padding-inline: 14px;
-  background: linear-gradient(135deg, #f5f2ec, #d4d8e0);
-  color: #20242c;
+  background: linear-gradient(135deg, #e9f4ff1f, #ffffff08), #10182740;
+  border-color: #ffffff45;
+  color: #ffffff;
   box-shadow:
     inset 0 1px rgba(255, 255, 255, 0.38),
     0 3px 10px rgba(0, 0, 0, 0.18);
 }
 .primary[aria-pressed="true"] {
-  background: linear-gradient(135deg, #ffc1af, #ff927f);
-  color: #351c19;
+  background: linear-gradient(135deg, #ffb49a52, #ff79612e), #17141d66;
+  border-color: #ffc5b591;
+  color: #fff5f0;
   box-shadow:
-    inset 0 1px #ffffff80,
+    inset 0 1px #ffe3d866,
     0 3px 16px #ff927f26;
 }
 .site {
@@ -171,7 +175,7 @@ button svg {
   @apply px-[14px] pt-[10px] pb-3 border-t border-white/10 overflow-auto overscroll-contain max-[420px]:px-[10px];
   scrollbar-width: thin;
   scrollbar-color: #777873 transparent;
-  background: linear-gradient(#080a0e26, #080a0e50);
+  background: linear-gradient(#080a0e08, #080a0e1a);
 }
 .mode {
   @apply flex gap-2 items-center font-semibold;
@@ -245,10 +249,10 @@ kbd {
     background-color: rgba(255, 255, 255, 0.09);
   }
   .primary:not(:disabled):hover {
-    background: linear-gradient(135deg, #ffffff, #e4e9f2);
+    background: linear-gradient(135deg, #e9f4ff2e, #ffffff0f), #10182740;
   }
   .primary[aria-pressed="true"]:not(:disabled):hover {
-    background: linear-gradient(135deg, #ffd1c3, #ffa28e);
+    background: linear-gradient(135deg, #ffb49a66, #ff796140), #17141d66;
   }
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -316,7 +320,7 @@ kbd {
   }
 }
 .preview-disclosure {
-  @apply overflow-hidden rounded-[14px] border border-white/8 bg-[#0d0e12]/60;
+  @apply overflow-hidden rounded-[14px] border border-white/8 bg-[#0d0e12]/20;
 }
 .rule .preview-toggle {
   @apply block w-full min-h-[32px] rounded-none p-0 cursor-zoom-in list-none outline-offset-[-3px] focus-visible:outline-2 focus-visible:outline-[#e8e6df] group-data-[expanded=true]:cursor-zoom-out;

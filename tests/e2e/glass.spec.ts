@@ -110,3 +110,81 @@ test("Glass panel: material, input feedback and platform preferences", async () 
     await instance.close();
   }
 });
+
+// A blur declaration alone is insufficient: the rendered surface must transmit
+// a visible amount of the page color, including the primary action.
+test("Frosted glass transmits the page behind the panel", async () => {
+  const instance = await isolatedBrowser();
+  const { context, extensionId } = instance;
+  await context.tracing.start({
+    screenshots: true,
+    snapshots: true,
+    sources: true,
+  });
+  try {
+    const bridge = await driver(context, extensionId);
+    const page = await context.newPage();
+    await page.goto("http://127.0.0.1:5173/tests/fixture.html");
+    const dock = await openDock(context, bridge, page);
+    const alpha = await dock
+      .locator(".dock")
+      .evaluate((el) =>
+        Number(getComputedStyle(el).backgroundColor.match(/[\d.]+/g)?.[3] ?? 1),
+      );
+    expect(alpha).toBeLessThanOrEqual(0.5);
+    await page.evaluate(() => {
+      const backdrop = document.createElement("div");
+      backdrop.id = "glass-backdrop";
+      backdrop.style.cssText =
+        "position:fixed;inset:0;z-index:2147483000;background:#ff4040";
+      document.body.append(backdrop);
+    });
+    const sample = async () => {
+      const screenshot = await dock.locator(".dock").screenshot();
+      return page.evaluate(async (data) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${data}`;
+        await img.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        return Array.from(
+          ctx.getImageData(img.width - 8, Math.floor(img.height / 2), 1, 1)
+            .data,
+        ).slice(0, 3);
+      }, screenshot.toString("base64"));
+    };
+    const red = await sample();
+    await page.locator("#glass-backdrop").evaluate((el) => {
+      el.style.background = "#4040ff";
+    });
+    const blue = await sample();
+    expect(red[0] - blue[0]).toBeGreaterThan(35);
+    expect(blue[2] - red[2]).toBeGreaterThan(35);
+    for (const theme of ["light", "dark"]) {
+      await page.locator("#glass-backdrop").evaluate((el, theme) => {
+        el.style.background = `repeating-linear-gradient(125deg, transparent 0 65px, #ffffff80 65px 115px), radial-gradient(ellipse at 90% 20%, #447eff, transparent 45%), radial-gradient(ellipse at 85% 60%, #ff745e, transparent 35%), ${theme === "light" ? "#edf3f8" : "#101522"}`;
+      }, theme);
+      await page.screenshot({ path: evidencePath(`frosted-${theme}.png`) });
+      await dock.locator("#hide").click();
+      await expect
+        .poll(() =>
+          dock
+            .locator(".details")
+            .evaluate((el) => getComputedStyle(el).opacity),
+        )
+        .toBe("1");
+      await page.screenshot({
+        path: evidencePath(`frosted-${theme}-picking.png`),
+      });
+      await page.keyboard.press("Escape");
+    }
+  } finally {
+    await context.tracing.stop({
+      path: evidencePath("frosted-transmission-trace.zip"),
+    });
+    await instance.close();
+  }
+});
