@@ -22,7 +22,6 @@ test("Startup: focused Hide retains contrast on first open and reopen", async ()
     const hide = dock.locator("#hide");
     const checkContrast = async (keyboardFocus = true) => {
       await expect(hide).toBeFocused();
-      await expect(hide).toHaveCSS("background-image", "none");
       if (keyboardFocus) await expect(hide).toHaveCSS("outline-style", "solid");
       const contrast = await hide.evaluate((button) => {
         const style = getComputedStyle(button);
@@ -38,10 +37,22 @@ test("Startup: focused Hide retains contrast on first open and reopen", async ()
           return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
         };
         const foreground = luminance(style.color);
-        const background = luminance(style.backgroundColor);
-        return (
-          (Math.max(foreground, background) + 0.05) /
-          (Math.min(foreground, background) + 0.05)
+        // Check every opaque gradient stop, including the darkest end of the
+        // raised surface. A transparent fallback must not qualify as legible.
+        const fills =
+          style.backgroundImage === "none"
+            ? [style.backgroundColor]
+            : (style.backgroundImage.match(/rgba?\([^)]+\)/g) ?? []);
+        if (!fills.length || fills.some((fill) => fill.startsWith("rgba")))
+          return 0;
+        return Math.min(
+          ...fills.map((fill) => {
+            const background = luminance(fill);
+            return (
+              (Math.max(foreground, background) + 0.05) /
+              (Math.min(foreground, background) + 0.05)
+            );
+          }),
         );
       });
       expect(contrast).toBeGreaterThanOrEqual(4.5);
@@ -68,7 +79,8 @@ test("Startup: focused Hide retains contrast on first open and reopen", async ()
     await checkContrast();
     // Pointer hover must preserve coral picking feedback after clicking Hide.
     await hide.hover();
-    await expect(hide).toHaveCSS("background-color", "rgb(255, 178, 162)");
+    await checkContrast();
+    await expect(hide).toHaveCSS("background-image", /rgb\(255, 162, 142\)/);
     await page.keyboard.press("Escape");
     await dock.locator("#close").click();
     await invokeAction(context, bridge, page);

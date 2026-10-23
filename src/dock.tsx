@@ -138,14 +138,17 @@ function Dock({
             <Icon name="grip" />
           </Tool>
           <span className="site min-w-0 flex-1">
-            <strong title={location.hostname}>{location.hostname}</strong>
+            <strong className="brand">Taylr</strong>
+            <span className="site-name" title={location.hostname}>
+              {location.hostname}
+            </span>
             <small>
               {chrome.extension.inIncognitoContext ? "Private · " : ""}
               {state.profile.paused
-                ? "Taylr · Paused"
+                ? "Paused"
                 : rules.length
-                  ? `Taylr · ${rules.length} hidden`
-                  : "Taylr"}
+                  ? `${rules.length} hidden`
+                  : "Site active"}
             </small>
           </span>
           <Tool
@@ -156,63 +159,70 @@ function Dock({
             <Icon name="close" />
           </Tool>
         </div>
-        <button
-          id="hide"
-          ref={hideRef}
-          type="button"
-          className="primary flex items-center justify-center gap-2"
-          aria-pressed={state.picking}
-          aria-busy={state.busy}
-          disabled={state.busy || state.profile.paused}
-          onClick={() => {
-            setRulesOpen(false);
-            setSiteOpen(false);
-            if (state.picking) inspector.stop();
-            else void inspector.start();
-          }}
-        >
-          <Icon name="hide" />
-          <span>{state.picking ? "Picking" : "Hide"}</span>
-        </button>
-        <Tool
-          id="undo"
-          label="Undo"
-          disabled={state.busy || !state.canUndo}
-          onClick={() => void inspector.undo()}
-        >
-          <Icon name="undo" />
-          <span>Undo</span>
-        </Tool>
-        <Tool
-          id="rules-toggle"
-          ref={rulesRef}
-          label="Rules"
-          aria-expanded={rulesOpen}
-          aria-controls="taylr-rules"
-          onClick={() => {
-            if (state.picking) inspector.stop();
-            setSiteOpen(false);
-            setRulesOpen(!rulesOpen);
-          }}
-        >
-          <Icon name="rules" />
-          <span>Rules</span>
-          {rules.length > 0 && <span className="count">{rules.length}</span>}
-        </Tool>
-        <Tool
-          id="site-toggle"
-          label="Site"
-          aria-expanded={siteOpen}
-          aria-controls="taylr-site"
-          onClick={() => {
-            if (state.picking) inspector.stop();
-            setRulesOpen(false);
-            setSiteOpen(!siteOpen);
-          }}
-        >
-          <Icon name="site" />
-          <span>Site</span>
-        </Tool>
+        <div className="tools flex min-h-0 flex-col gap-1">
+          <button
+            id="hide"
+            ref={hideRef}
+            type="button"
+            className="primary flex items-center justify-center gap-2"
+            aria-pressed={state.picking}
+            aria-busy={state.busy}
+            disabled={state.busy || state.profile.paused}
+            onClick={() => {
+              setRulesOpen(false);
+              setSiteOpen(false);
+              if (state.picking) inspector.stop();
+              else void inspector.start();
+            }}
+          >
+            <Icon name="hide" />
+            <span>{state.picking ? "Picking" : "Hide"}</span>
+          </button>
+          <Tool
+            id="undo"
+            label="Undo"
+            disabled={state.busy || !state.canUndo}
+            onClick={() => void inspector.undo()}
+          >
+            <Icon name="undo" />
+            <span>Undo</span>
+          </Tool>
+          <Tool
+            id="rules-toggle"
+            ref={rulesRef}
+            label="Rules"
+            aria-expanded={rulesOpen}
+            aria-controls="taylr-rules"
+            onClick={() => {
+              if (state.picking) inspector.stop();
+              setSiteOpen(false);
+              setRulesOpen(!rulesOpen);
+            }}
+          >
+            <Icon name="rules" />
+            <span>Rules</span>
+            {rules.length > 0 && <span className="count">{rules.length}</span>}
+          </Tool>
+          <Tool
+            id="site-toggle"
+            label="Site"
+            aria-expanded={siteOpen}
+            aria-controls="taylr-site"
+            onClick={() => {
+              if (state.picking) inspector.stop();
+              setRulesOpen(false);
+              setSiteOpen(!siteOpen);
+            }}
+          >
+            <Icon name="site" />
+            <span>Site</span>
+            <span
+              className="site-state"
+              data-paused={state.profile.paused}
+              aria-hidden="true"
+            />
+          </Tool>
+        </div>
       </div>
       {details && (
         <div className="details">

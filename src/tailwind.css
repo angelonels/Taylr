@@ -18,10 +18,10 @@
 }
 .dock {
   --ink: #f3f4f6;
-  --muted: #c0c2cf;
-  --coral: #ff9ab0;
+  --muted: #b9bdc8;
+  --coral: #ffac9c;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  @apply fixed left-0 top-0 flex w-[264px] max-w-[calc(100vw-32px)] pointer-events-auto flex-col rounded-[20px] border border-transparent bg-[#191a1b]/95 text-[var(--ink)] isolate overflow-hidden text-start;
+  @apply fixed left-0 top-0 flex w-[280px] max-w-[calc(100vw-32px)] pointer-events-auto flex-col rounded-[24px] border border-white/15 bg-[#16181d]/85 text-[var(--ink)] isolate overflow-hidden text-start;
   font:
     400 13px/1.4 -apple-system,
     BlinkMacSystemFont,
@@ -29,23 +29,64 @@
     sans-serif;
   font-optical-sizing: auto;
   direction: ltr;
-  backdrop-filter: blur(24px) saturate(1.9);
+  background-image: linear-gradient(
+    145deg,
+    #ffffff0d,
+    transparent 45%,
+    #ffffff03
+  );
+  backdrop-filter: blur(32px) saturate(1.6);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.65),
-    0 12px 36px -8px rgba(0, 0, 0, 0.5),
+    0 18px 48px -12px rgba(0, 0, 0, 0.65),
     inset 0 1px rgba(255, 255, 255, 0.18),
     inset 0 0 0 1px rgba(255, 255, 255, 0.11);
 }
 .bar {
-  @apply p-2 shrink-0;
+  @apply p-[10px] min-h-0;
 }
 .panel-header {
-  @apply w-full mb-2;
+  @apply w-full mb-[10px] shrink-0;
 }
-.bar > button {
-  @apply w-full justify-start px-4 rounded-[12px];
+.tools {
+  padding: 4px;
+  margin: -4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
-.bar > button .count {
+.tools > button {
+  @apply relative w-full justify-start px-3 rounded-[14px] min-h-[46px];
+}
+.tools > button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(120deg, #ffffff12, transparent 60%);
+  box-shadow: inset 0 1px #ffffff18;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.tools > button > svg {
+  @apply box-content p-[6px] rounded-[9px] size-[18px] bg-white/6;
+}
+.tools > .primary {
+  @apply min-h-[52px] mb-1;
+}
+#site-toggle {
+  @apply mt-1 border-t border-white/8 rounded-t-[4px];
+}
+.site-state {
+  @apply ms-auto size-[6px] rounded-full bg-[#a8e8c6];
+  box-shadow: 0 0 8px #a8e8c630;
+}
+.site-state[data-paused="true"] {
+  background: #d6c08b;
+  box-shadow: none;
+}
+.tools > button .count {
   @apply static ms-auto;
 }
 .empty {
@@ -62,16 +103,13 @@ button {
     "Segoe UI",
     sans-serif;
   -webkit-tap-highlight-color: transparent;
-  transition:
-    background-color 120ms ease,
-    opacity 120ms ease,
-    transform 100ms var(--ease-out);
+  transition: transform 160ms var(--ease-out);
 }
 button:disabled {
   @apply opacity-[.34] cursor-default;
 }
 button:focus-visible {
-  outline: 2px solid #e8e6df;
+  outline: 2px solid #ffb6a8;
   outline-offset: 2px;
 }
 button:not(.primary):focus-visible {
@@ -82,23 +120,31 @@ button svg {
 }
 .primary {
   padding-inline: 14px;
-  background: #e8e6df;
-  color: #222321;
+  background: linear-gradient(135deg, #f5f2ec, #d4d8e0);
+  color: #20242c;
   box-shadow:
     inset 0 1px rgba(255, 255, 255, 0.38),
     0 3px 10px rgba(0, 0, 0, 0.18);
 }
 .primary[aria-pressed="true"] {
-  background: #ffb2a2;
-  color: #32151f;
+  background: linear-gradient(135deg, #ffc1af, #ff927f);
+  color: #351c19;
+  box-shadow:
+    inset 0 1px #ffffff80,
+    0 3px 16px #ff927f26;
 }
 .site {
   @apply flex flex-col gap-[2px] pe-[6px] max-[560px]:ps-[2px];
 }
-.site strong {
-  @apply truncate font-[550] leading-[1.3] max-[560px]:text-xs;
+.site .brand {
+  @apply text-[15px] font-semibold leading-[1.2];
+  letter-spacing: -0.025em;
+}
+.site-name {
+  @apply truncate text-[11px] font-medium leading-[1.4] text-[var(--muted)];
 }
 .site small {
+  letter-spacing: 0.015em;
   @apply text-[11px] leading-[1.3] text-[var(--muted)];
 }
 .grip {
@@ -113,20 +159,19 @@ button svg {
     0 20px 48px -10px rgba(0, 0, 0, 0.65),
     inset 0 1px rgba(255, 255, 255, 0.2);
 }
-#rules-toggle {
-  @apply relative;
-}
-#rules-toggle[aria-expanded="true"] {
-  background: rgba(232, 230, 223, 0.12);
-  color: #e8e6df;
+.tools > button[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px #ffffff18;
+  color: #ffffff;
 }
 .count {
-  @apply absolute top-[3px] right-[2px] min-w-[15px] h-[15px] px-[3px] py-px rounded-[8px] bg-[#e8e6df] text-[#222321] text-[9px] leading-[13px] font-[750];
+  @apply absolute top-[3px] right-[2px] min-w-[15px] h-[15px] px-[3px] py-px rounded-[8px] bg-[#d5dce9]/15 text-[#e9edf6] text-[9px] leading-[13px] font-[750];
 }
 .details {
   @apply px-[14px] pt-[10px] pb-3 border-t border-white/10 overflow-auto overscroll-contain max-[420px]:px-[10px];
   scrollbar-width: thin;
   scrollbar-color: #777873 transparent;
+  background: linear-gradient(#080a0e26, #080a0e50);
 }
 .mode {
   @apply flex gap-2 items-center font-semibold;
@@ -179,6 +224,7 @@ kbd {
 .details > .status:first-child {
   @apply m-0 p-[6px];
 }
+#taylr-site h2,
 .rules-heading h2 {
   @apply m-0 text-sm font-semibold;
 }
@@ -192,17 +238,28 @@ kbd {
   @apply text-[#e8e6df] text-[11px] px-[10px] rounded-[12px] bg-white/8;
 }
 @media (hover: hover) and (pointer: fine) {
+  .tools > button:not(:disabled):hover::before {
+    opacity: 1;
+  }
   button:not(:disabled):hover {
     background-color: rgba(255, 255, 255, 0.09);
   }
   .primary:not(:disabled):hover {
-    background-color: #f4f2ec;
+    background: linear-gradient(135deg, #ffffff, #e4e9f2);
   }
   .primary[aria-pressed="true"]:not(:disabled):hover {
-    background-color: #ffb2a2;
+    background: linear-gradient(135deg, #ffd1c3, #ffa28e);
   }
 }
 @media (prefers-reduced-motion: no-preference) {
+  @media (hover: hover) and (pointer: fine) {
+    .dock:not([data-keyboard="true"]) .tools > button:not(:disabled):hover svg {
+      transform: translateY(-1px);
+    }
+  }
+  .tools > button svg {
+    transition: transform 160ms var(--ease-out);
+  }
   .dock:not([data-keyboard="true"]) button:not(:disabled):active {
     transform: scale(0.97);
     transition-duration: 150ms;
@@ -285,5 +342,16 @@ kbd {
 }
 .dock[data-short="true"] .details {
   flex-shrink: 0;
+  overflow: visible;
+}
+
+.dock[data-keyboard="true"] button,
+.dock[data-keyboard="true"] button svg {
+  transition: none;
+}
+.dock[data-short="true"] .bar {
+  flex-shrink: 0;
+}
+.dock[data-short="true"] .tools {
   overflow: visible;
 }

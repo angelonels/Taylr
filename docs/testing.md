@@ -1,93 +1,48 @@
-# Browser acceptance contract
+# Testing
 
-E2E is the test mechanism. Failure scenarios precede implementation; no mirrored unit tests.
-
-## Continuous verification
-
-The [Verify workflow](../.github/workflows/verify.yml) runs on pushes and pull requests using Node.js 22 and disposable Playwright Chromium on Linux. It checks types, lint and formatting before installing Chromium and running the deterministic suite with two workers. The test wrapper performs the build once, owns the fixture server and writes the report/evidence directory. npm downloads and Playwright binaries are cached; system dependencies are installed on each runner. New runs cancel superseded work for the same branch or pull request.
-
-Open a workflow run's **Artifacts** to download `acceptance-<run>-<attempt>` for reports, traces and build diagnostics, including failed test runs. Evidence is retained for seven days. A successful run also provides `taylr-<commit>` containing the unpacked extension for fourteen days. Extract it before using Chrome's **Load unpacked**. This is artifact delivery; store publication is not configured.
-
-The manual **Run workflow** form offers `none`, `canary` or `catalog` for live verification after the local suite. The default runs no public-site cases. Live cases retain the runner's existing outcome semantics: blocked coverage exits 2 and fails that optional gate, rather than claiming a pass. Live work never connects to personal browser data.
-
-## Isolation
-
-Automated tests launch Playwright’s bundled Chromium in headless mode, with a new temporary data directory and extension copy per test. They never attach to any personal browser, profile, cookies, or credentials. Most temporary extension copies narrow host access to the fixture and selected site’s exact origin. The site-access acceptance case keeps the generated production manifest, which requests all HTTP/HTTPS hosts at installation, and rejects any per-site permission request. Temporary files and browsers close in teardown. Use the run wrapper to allocate a unique evidence directory. Coordinate commands while editing/building: a running test must never observe a replaced build. Workers inside one command have isolated browsers and artifacts. Run only one top-level browser CLI job at a time. Acceptance runs own their fixture server on port 5173 and refuse an occupied port before cases launch; they never reuse or terminate another process’s server. Stop a development server yourself before running acceptance. A failure-injection child runner uses its parent’s server and does not own a second server lifecycle. Named host locks serialize cases for the same hostname while unrelated sites can run in parallel. `TAYLR_HEADED=1` shows this disposable browser for debugging.
+## Gates
 
 ```sh
-npm ci
-npx playwright install chromium
-node scripts/run-tests.mjs local
-node scripts/run-tests.mjs canary --workers=2
-node scripts/run-tests.mjs catalog --workers=2
-TAYLR_SITES=youtube,amazon TAYLR_COMPONENTS=primary node scripts/run-tests.mjs catalog
-node scripts/run-tests.mjs compare --workers=1
-TAYLR_TRACE=full node scripts/run-tests.mjs canary
-TAYLR_RUN_ROOT=output/playwright/runs/<id>/headless node scripts/report-sites.mjs
+npm run check
+npm run format:check
+npm run test:e2e -- --workers=2  # controlled acceptance
+npm run test:canary -- --workers=2
+npm run test:live -- --workers=2
+npm run test:compare -- --workers=1
 ```
 
-The wrapper first checks that bundled Chromium is installed, builds the extension once, and checks its manifest before launching any cases. A missing dependency/browser or failed build produces one structured `preflight.json` environment failure with a recovery command, rather than dozens of repeated launch failures. Automatic building prevents changed source from being tested against stale `dist`. Compiler output is retained in the run’s `build.log`, keeping routine terminal output short while preserving failure diagnostics. `TAYLR_SKIP_BUILD=1` is reserved for an explicitly frozen build during diagnostic work; release runs must use the default build. Building the disposable test copy never reloads an installed personal extension.
+The wrapper builds once, checks the bundled browser and owns its fixture server. Tests launch disposable Playwright Chromium with temporary profiles; they never attach to personal browser sessions or reload an installed extension. Serialize top-level runs because they share port 5173; use workers inside one run.
 
-The default deterministic suite runs without live-site access. A test-only action bridge invokes the real registered toolbar handler using the intended page’s stable Chrome tab ID (resolved in its disposable window), with fresh tab metadata for each action; it cannot create Chrome’s native activeTab gesture. Preview tests grant `<all_urls>` in their disposable extension copies so the actual captureVisibleTab API can be exercised without a native toolbar gesture. Production declares required HTTP/HTTPS hosts and retains activeTab; it makes no runtime host-permission request. The production-permission site-access case verifies the generated host grant and reversible Pause/Resume behavior. These temporary installs never touch a personal profile. Native install/update permission-dialog presentation is outside this programmatic harness. The opt-in `TAYLR_NATIVE_ACTION=1` diagnostic in `native-permission.spec.ts` deliberately strips host permissions from its temporary copy and attempts a `_execute_action` shortcut with zero host grants. This diagnostic fixture does not model the production permission manifest. Both headless and headed Chromium 156 probes failed to dispatch a browser action from Playwright `page.keyboard`; the test is explicitly marked unresolved by default. It does not establish production activeTab coverage.
+Use local acceptance for ordinary edits, canaries for cross-page changes, and the full catalog for compatibility audits. `TAYLR_HEADED=1` enables visible disposable browsers. `TAYLR_SITES`, `TAYLR_COMPONENTS` and `TAYLR_CASES` filter live checks; `TAYLR_TRACE=full` retains successful live traces.
 
-The deterministic fixture runs without live-site access. The opt-in catalog currently has 37 modern sites and three deliberately different component contracts per site (111 cases). The shared six checkpoints are baseline/uniqueness, Hide without navigation, Undo, attached-but-hidden reload/new-tab persistence, Restore across tabs, and Escape. Repeating these invariants is necessary, but website count alone is not coverage: component geometry, rendering model, sibling retention, nested controls, sticky positioning and replacement behavior explain why each case exists.
+| Exit | Meaning                                                                 |
+| ---- | ----------------------------------------------------------------------- |
+| 0    | Every selected contract passed                                          |
+| 2    | External access blocks left coverage incomplete                         |
+| 1    | Product, contract, environment or harness error; missing/stale evidence |
 
-## Failure scenarios
+## Acceptance contracts
 
-- A selection follows a link or activates a page control.
-- A button glyph or label is hidden instead of its control, or default grouping prevents explicit Child selection.
-- Hiding one repeated card hides a sibling, or a broad selector hides the page.
-- A container’s nested child is hidden instead of the selected parent, moving onto another child loses explicit refinement, or Down loses the child selected before moving Up.
-- Synthetic site clicks, key events or open-shadow toolbar clicks create rules; modified Enter hides accidentally; or Undo leaves page selection unusable.
-- Cancel/Escape fails, focus is lost when a control disappears, reopening the dock duplicates roots, or the outline stops following layout shifts.
-- The floating toolbar blocks a target and cannot be moved out of the way.
-- A repeated card changes position and a new neighbor inherits its saved rule. Live assertions must follow a declared stable identity when server results reorder, rather than assuming the first position still describes the same card.
-- Generated DOM identifiers or URL tracking parameters survive only one render and break persistence. Stable query parameters that distinguish content must remain part of the rule.
-- A semantic landmark receives a positional selector; inserting a same-tag sibling reveals it and hides the wrong wrapper.
-- A product link regenerates search attribution and reveals the hidden card despite a stable product identifier.
-- Reload, a new tab, or dynamically replaced content loses a saved rule.
-- Undo removes a different tab’s rule, concurrent writers lose an update, or a delayed mutation response overwrites a newer broadcast/storage state.
-- A delayed Save/Restore reply overwrites a newer broadcast, or closing during Save fails.
-- Installation lacks the required HTTP/HTTPS host grant, a per-site permission request appears, Pause deletes rules or leaves another tab hidden, Resume misses a paused tab, or one origin's pause affects another.
-- Restricted URLs or denied permissions provide no recovery path; concurrent first-use action invocations race dynamic registration into a false error.
-- Saved rules show generic container tags when recognizable text is available.
-- Child traversal selects a `visibility: hidden` element.
-- Dock bounds, edge expansion, readable controls, focus or reflow breaks at narrow widths or native 200% Chrome zoom.
-- Paused animation frames leave Hide waiting for its preview; preview capture failure blocks Hide, another tab’s pixels leak into a rule, img-src CSP blocks the preview, or preview quota pressure prevents saving.
-- Reflow, scrolling or removal during native capture saves pixels from the component’s former position. Keyboard grip activation travels through a spring or a held keyboard press shrinks its control.
+Controlled fixtures cover precise selection, parent/child traversal, synthetic-input rejection, cancellation and focus, Undo ownership, cross-tab races, dynamic replacement, selector identity, startup recovery, denied access and reversible Pause/Resume. Panel cases cover drag, edge switching, unchanged page width, long rules and labels, six viewport widths, native 200% zoom, short windows, immediate keyboard feedback, dark glass and accessibility preferences.
 
-The fixture covers concurrency, inline important styles, keyboard/pointer interception, DOM replacement, selector identity and hierarchy. Separate E2E scenarios cover dock open/close, layout preservation, drag and keyboard movement, edge expansion, the six widths 320/375/768/1024/1440/2560, native 200% browser zoom, reduced motion, denied access, concurrent action invocation and delayed replies. Preview tests use native Chrome capture/cropping, persistence and individual Restore, CSP-safe rendering, inactive-tab refusal, paused-frame deadlines and quota fallback. WebP/PNG artifacts expose the actual visual result; traces preserve the interaction and DOM snapshots.
+Preview acceptance checks actual pixels, native detail, clipping, geometry invalidation, hostile image CSP, inactive documents, delayed/failed captures, cancellation, storage pressure and paused animation frames. Image presence alone is insufficient.
 
-A separate opt-in LeetCode access smoke verifies the action can mount the dock on ordinary HTTPS without a false “protected” state. It records website challenge status separately. Passing that smoke does not verify LeetCode problem rows or filters behind Cloudflare.
+Each live component requires H01 baseline/uniqueness, H02 precise Hide without navigation, H03 Undo, H04 an attached-but-hidden target after reload/new-tab, H05 Restore across tabs, and H06 Escape. Independent retained content and application state must survive. Readiness polls observable app state; immediate Hide/Undo checks remain strict. Reacquire only the declared component after a proved pointer miss or disconnected node.
 
-## Evidence and interpretation
+The production-permission fixture retains HTTP/HTTPS grants and rejects runtime permission requests. The test action bridge invokes the real handler but does not establish Chrome’s native activeTab gesture. Native permission-dialog automation remains an opt-in unresolved diagnostic; LeetCode access smoke is also opt-in and does not prove challenge-protected component coverage.
 
-The wrapper allocates `output/playwright/runs/<timestamp-random-id>/<headless|headed>/`. Each live component owns `sites/<site>/<component>/` with baseline HTML, screenshots, six checkpoints and failure details. Successful live traces are discarded by default; failure traces remain, and `TAYLR_TRACE=full` retains all traces. Every case still produces a report/checkpoint artifact. Existing controlled tests write their detailed traces and screenshots directly inside the same scoped run root. `report/index.html` is the Playwright report; `catalog-results.json` and `catalog-report.html` describe the selected live contracts. The JSON includes aggregate phase milliseconds and live artifact/trace byte counts so runtime and evidence costs can be measured across audits. `output/playwright/latest-run.json` points to the latest invocation, preserving older runs. Direct Playwright commands remain useful for diagnosis but use the legacy output root unless `TAYLR_RUN_ROOT` is set.
+## Evidence
 
-Evidence records separate extension-build, contract and harness hashes, plus Chromium/Playwright versions, display mode, OS/architecture, viewport, DPR, locale/timezone, actual temporary-manifest hash and permission model. A tooling-only lockfile change does not invalidate product evidence. Old evidence without the required identity/environment is historical, not current. Catalog reports distinguish not-selected contracts from attempted contracts; a canary run does not establish all-site coverage.
+Each invocation writes `output/playwright/runs/<id>/<headless|headed>/`. `output/playwright/latest-run.json` points to the latest invocation. Open `report/index.html` for local results or `catalog-report.html` / `catalog-results.json` for live contracts. Controlled tests retain traces/screenshots; live cases retain checkpoints and rendered evidence, with failure traces by default.
 
-Explicitly combine a full audit and targeted reruns only when their build, harness, component contract and environment still qualify:
+Build, harness, component and environment fingerprints qualify evidence. Old results are historical after relevant changes. A canary does not verify the remaining catalog. Reports distinguish passed, externally blocked, product-failed, contract-failed, environment-error, harness-error, unrun and stale. Authentication, challenges, paywalls and browser protections are never bypassed.
+
+Compatible targeted reruns can supplement a full audit:
 
 ```sh
-node scripts/report-sites.mjs --roots output/playwright/runs/<full>/headless output/playwright/runs/<targeted>/headless --output output/playwright/reports/<combined-id>
+node scripts/report-sites.mjs --roots output/playwright/runs/<full>/headless output/playwright/runs/<targeted>/headless --output output/playwright/reports/<combined>
 ```
 
-The new report preserves the original evidence directories and records each row’s source run, artifact links and candidate history. Coverage is the union of the runs’ declared selections; missing selected contracts remain unrun. The newest qualifying attempt wins, including failures and access blocks. Stale candidates remain visible as rejected history. Malformed candidates, invalid timestamps/outcomes, incomplete six-checkpoint passes and incompatible environments fail explicitly; headed and headless roots cannot mix. Product or harness changes require fresh affected evidence: combining reports cannot make old-build passes current. Artifact bytes measure all supplied source roots, including rejected history, while phase totals describe the chosen attempts.
+Aggregation retains original artifacts and rejected history. The newest qualifying attempt wins, including failures and blocks. Mixed environments/display modes, malformed records and incomplete checkpoint passes fail explicitly. Phase times overlap across workers; they are not wall time.
 
-Use `local` after ordinary edits, `canary` after cross-page behavior changes, and `catalog` for release compatibility audits. Canary cases deliberately cover a video card, chess board, canvas, maps search, chart drawing surface and Scratch blocks. All 111 catalog contracts and their six assertions remain available. `compare` runs the same three contracts in headless then headed mode, including a challenging access-controlled site, without modifying browser protections. Its two reports and duration summaries are separate; one small comparison is diagnostic evidence, not a general claim that one mode evades website restrictions.
-
-Live evidence captures Chromium’s rendered surface through native CDP, with a bounded deadline, rather than waiting for unrelated web fonts to finish. Site content, fonts and security settings remain unchanged; screenshots record whatever the browser currently displays. A controlled never-finishing-font E2E guards this distinction. Locator evidence crops convert viewport-relative bounds to document coordinates; a pixel-checked E2E covers fixed and ordinary content after horizontal and vertical scrolling. Application invariants keep their exact expected values, but each reload/new-tab revisit polls for those values within the existing assertion budget because a visible editor shell can precede project hydration. Immediate Hide/Undo checks still detect state changes caused by the interaction.
-
-The picker must be visible before the runner sends keyboard input. A resolved click is not proof that asynchronous access checks, registration and selection startup have completed. Pointer selection samples exposed points of the declared component, never substitutes a broader target. It follows actual inspector selection through the internal state query and verifies the saved rule resolves to the exact declared DOM element; merely hiding an ancestor does not qualify. Canvas contracts use a stable viewport host or stage relationship; mutable pixel dimensions are not an identity. Retained content must remain independent of the hidden surface. The original unselected listing is tracked through Hide/Undo; later server responses may replace that neighbor, so revisits require a current independent result. The selected listing must still resolve to exactly one attached, hidden node. Declared initial app values wait for hydration before state comparisons. Airbnb’s search/filter contracts require enabled native controls so server-rendered placeholders cannot qualify as a ready baseline. Candidate selectors are validated against observed DOM; contract changes must retain the stated component and reason. Failure capture follows the actual failing tab, including new-tab access restrictions. Interactive-app contracts also retain meaningful state where available, such as board zoom, search text, or an unopened sort control.
-
-A session result is finalized after browser cleanup and result attachment. An otherwise successful attempt becomes `harness-error` if either operation fails; earlier product/access diagnoses remain intact with auxiliary finalization errors. Failure-injection E2Es launch child Playwright runners against the owned fixture and compare their status with persisted session records and the actual catalog report. Their generated probe records are explicitly fixture evidence, never public-site compatibility claims.
-
-The wrapper exits **0** only when every selected contract passes, **2** when coverage is incomplete solely because of observed website access blocks, and **1** for product/contract/environment/harness errors or missing/stale selected evidence. Observed blocks appear as `external-block` annotations and skipped attempts in Playwright, with a typed `blocked` record in the catalog. This avoids restarting a failed worker for a known external access condition; blocks never count as passes. A transport failure stays `environment-error`, not an access block. Main-document HTTP status and visible challenge signals are collected before component waits and again after revisits. Diagnostics use bounded waits, and browser cleanup survives evidence-write failures.
-
-The failure-first harness E2E scenarios exercise real browser responses for HTTP 429/503, a failed connection, bounded missing-element actions, deletion of temporary profile data after failure, a healthy vendor title that must not be mistaken for an access challenge, and a real subprocess whose missing bundled browser is rejected before component launches. A separate report-CLI integration scenario verifies selection unions, newest failure/block precedence, stale and malformed candidates, mode/environment rejection, and original artifact provenance. Its synthetic records are explicitly marked as report fixtures and never establish public-site compatibility. Research and historical cost measurements are recorded in [the testing strategy](research/testing-strategy.md).
-
-No CAPTCHA, login wall, paywall, or security interstitial is bypassed. An access block remains a block, never a feature pass. Partial checkpoints, selector failures and extension failures remain distinct from completed cases. Generated evidence and browser data stay out of Git.
-
-Headed compatibility diagnostics can receive external trusted pointer input from the desktop. In the recorded Canva navigation/category failures, the intended CDP pointer point was immediately followed by a distinct smooth trusted pointer trajectory into unrelated page content, sometimes interleaved with keyboard refinement. The exact source—physical OS input or another controller—is unproven. These attempts are indeterminate under contaminated input, not evidence that the picker should ignore genuine user movement. Headless runs remain the default isolated compatibility gate; the historical headed failures are preserved rather than silently counted as passes.
-
-Public-page pointer placement verifies that the dispatched position still hits the declared component. Only an observed miss triggers bounded remeasurement after reflow; exact component selection and all six assertions remain required. No retry may replace the target or count a wrong hit as a pass.
+Harness regressions cover occupied-server ownership, missing-browser preflight, failure classification, cleanup/attachment failures, screenshot coordinates after scrolling, unfinished fonts, app hydration, contaminated pointer input and report provenance. Details of the strategy are in [the rationale](research/testing-strategy.md); public contracts and coverage are in [the matrix](site-test-matrix.md).
