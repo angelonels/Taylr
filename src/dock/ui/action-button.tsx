@@ -52,7 +52,10 @@ export function ActionButton({
       data-state={phase}
       onClick={() => void run()}
     >
-      <span className="arc-action-content" aria-hidden="true">
+      <span
+        className="arc-action-content pointer-events-none"
+        aria-hidden="true"
+      >
         <AnimatePresence initial={false} mode="wait">
           <motion.span
             key={text}

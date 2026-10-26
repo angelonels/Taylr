@@ -4,13 +4,11 @@ The catalog defines **47 sites and 183 component contracts** in [tests/sites.jso
 
 ## Current qualification
 
-**Full qualification of the final harness is incomplete.** The 47-site /183-contract catalog is planned coverage, not a claim that every feature passed on every site. Catalog status notes remain historical until a complete matching-fingerprint audit replaces them.
+The [current audit](../output/playwright/qualifications/2026-10-26T08-11-11-386894Z/aggregate/catalog-report.html) attempted **all 183 contracts** on the same frozen production build and harness: **153 passed, 30 externally blocked, and zero product, contract, environment or harness failures**. No contracts are unrun or stale. **37 of 47 sites are fully verified**; the other ten contain access-blocked components. Blocked coverage remains unverified.
 
-The last complete controlled acceptance gate recorded **216 passed and two opt-in diagnostics skipped**, with no failures. After the final recovery and test-isolation fixes, the [focused gate](../output/playwright/runs/2026-10-26T05-44-32-008Z-99d43d/headless/report/index.html) passed **12 checks**, including full editor properties, replaced targets, connected wrong targets and private extension-copy isolation. That focused gate does not qualify the public catalog. The final [Flipkart footer check](../output/playwright/runs/2026-10-26T05-46-29-024Z-d10d8e/headless/catalog-report.html) passed the complete live journey with the recovery fix; that targeted run selected one contract and left the other 182 unselected.
+The [complete controlled acceptance suite](../output/playwright/runs/2026-10-26T07-00-11-734Z-0f5e8c/headless/report/index.html) recorded **224 passed, two opt-in diagnostics skipped, and zero failures**. It includes real native presses across animated Save-label replacement, saved/draft target replacement, a replaced-node handoff after Save, and native page-load readiness. A separate Chromium check confirms the saved button’s accessible name is exactly “Saved.”
 
-The latest public batch was invalidated when a temporary test workspace used a symlinked build and fixture writes reached the shared generated files. Fingerprint reconciliation rejected the batch; a truncated session record also prevented aggregation. The production build was restored exactly, and disposable test copies now dereference build symlinks. A real-browser regression proves the original build remains unchanged. Affected records remain on disk and are not counted as final passes.
-
-The earlier complete public audit recorded **144 passed, 31 externally blocked, six product-classified failures and two contract failures**, with no unrun cases. Its [report](../output/playwright/qualifications/2026-10-25T08-26-33-707132Z/aggregate/catalog-report.html) is historical because the harness changed afterward. Earlier interrupted runs and the 22 October 37-site /111-contract baseline are historical too.
+The audit preserves original failed attempts and their traces. After a recorded clamshell sleep and network interruption, only the 60 unresolved contracts were rerun; the final report combines matching build, harness, contract and environment fingerprints. Production build **6407d5a07340** contains no test bridge or driver. Catalog status fields reflect this dated audit. Earlier audits remain historical.
 
 ## Catalog
 

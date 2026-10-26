@@ -48,6 +48,7 @@ export function evidenceIdentity(site, component) {
       url: site.url,
       origins: site.origins,
       dismiss: site.dismiss,
+      readyState: site.readyState,
       readyUrl: site.readyUrl,
       readySelector: site.readySelector,
       invariant: site.invariant,

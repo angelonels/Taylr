@@ -113,7 +113,10 @@ export async function runLiveSite(context, extensionId, site) {
       // uniqueness and editor actions retain their independent 15-second gates.
       const deadline = Date.now() + 60000;
       const remaining = () => Math.max(1, deadline - Date.now());
-      const options = { waitUntil: "domcontentloaded", timeout: remaining() };
+      const options = {
+        waitUntil: site.readyState ?? "domcontentloaded",
+        timeout: remaining(),
+      };
       const response = url
         ? await targetPage.goto(url, options)
         : await targetPage.reload(options);
@@ -765,9 +768,6 @@ export async function runLiveSite(context, extensionId, site) {
     await expect(target).toHaveCount(1);
     await expect(target).toHaveCSS("opacity", editedOpacity);
     await expect(target).toHaveCSS("border-radius", editedRadius);
-    const replacedAfterCommit = !(await committedNode.evaluate(
-      (element) => element.isConnected,
-    ));
     expect(
       await target.evaluate(
         (element, selector) => document.querySelector(selector) === element,
@@ -783,14 +783,11 @@ export async function runLiveSite(context, extensionId, site) {
     // Continue tracking it when a successful edit changes a discovery text label.
     selectedSelector = edited.profile.rules[0].selector;
     target = locateTarget(page);
-    if (replacedAfterCommit) {
-      await expect
-        .poll(async () => (await readSelection()).selector ?? "")
-        .toBe("");
-      // locateTarget still carries the scenario's original declared identity.
-      await expect(target).toHaveCount(1);
-      await selectTarget(true);
-    }
+    // A native replacement can occur after the strict identity proof above.
+    // Renew the editor handoff every time; committed Save is never replayed.
+    await page.keyboard.press("Escape");
+    await startEdit(dock);
+    await selectTarget(true);
     const editorVerification = await verifyEditor({
       page,
       dock,

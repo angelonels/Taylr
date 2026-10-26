@@ -133,3 +133,69 @@ new MutationObserver(hook).observe(document.documentElement,{childList:true,subt
     }
   });
 }
+
+test("Catalog editor renews selection after the saved-rule identity handoff", async () => {
+  const site = {
+    id: "catalog-edit-handoff",
+    caseId: "primary",
+    component: "Replaced article",
+    url: "http://127.0.0.1:5173/catalog-edit-handoff",
+    target: "#selected",
+    keep: "#kept",
+  };
+  const instance = await isolatedBrowser(site);
+  const witnesses: {
+    oldConnected: boolean;
+    returnedOriginal: boolean;
+    unique: boolean;
+  }[] = [];
+  await instance.context.exposeBinding("__recordHandoff", (_source, value) =>
+    witnesses.push(value),
+  );
+  await instance.context.route(site.url, (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: `<!doctype html><title>Saved editor handoff</title><style>body{padding:40px;font:18px system-ui}article{display:block;width:420px;padding:25px;margin:20px;background:#ddd}</style><main><section><article id="selected"><span>Selected card</span></article><article id="kept"><span>Independent card</span></article></section></main><script>
+const nativeQuery=Document.prototype.querySelector;
+let saved=false, fired=false;
+let watched=false;function watch(){const root=nativeQuery.call(document,'taylr-tools')?.shadowRoot;if(!root||watched)return;watched=true;new MutationObserver(()=>{if(root.querySelector('#status')?.textContent==='Changes saved.')saved=true;}).observe(root,{subtree:true,childList:true,characterData:true});}new MutationObserver(watch).observe(document.documentElement,{subtree:true,childList:true});watch();
+Document.prototype.querySelector=function(selector){
+  const result=nativeQuery.call(this,selector);
+  if(this===document&&saved&&!fired&&selector==='article#selected'&&result){
+    fired=true;const original=result;
+    queueMicrotask(()=>{const clone=original.cloneNode(true);original.replaceWith(clone);window.__recordHandoff({oldConnected:original.isConnected,returnedOriginal:result===original,unique:document.querySelectorAll('#selected').length===1});});
+  }
+  return result;
+};
+</script>`,
+    }),
+  );
+  try {
+    let failure: unknown;
+    const result = await runLiveSite(
+      instance.context,
+      instance.extensionId,
+      site,
+    ).catch((error) => {
+      failure = error;
+      return null;
+    });
+    await test.info().attach("saved-rule-handoff", {
+      body: JSON.stringify({
+        witnesses,
+        failure: failure instanceof Error ? failure.message : failure,
+      }),
+      contentType: "application/json",
+    });
+    expect(witnesses).toEqual([
+      { oldConnected: false, returnedOriginal: true, unique: true },
+    ]);
+    expect(
+      failure,
+      "The complete journey must start from a renewed, exact editor selection",
+    ).toBeUndefined();
+    expect(result?.outcome).toBe("passed");
+  } finally {
+    await instance.close();
+  }
+});
