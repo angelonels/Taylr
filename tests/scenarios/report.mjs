@@ -1,5 +1,6 @@
+import { coreProperties } from "./editor.mjs";
 import assert from "node:assert/strict";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -52,7 +53,14 @@ export async function runReportScenarios(directory, environment) {
         outcome,
         checks:
           outcome === "passed"
-            ? ["H01", "H02", "H03", "H04", "H05", "H06"]
+            ? [
+                "Baseline:",
+                "Edit:",
+                "Undo:",
+                "Persistence:",
+                "Restore:",
+                "Exit:",
+              ]
             : ["H01"],
         ...overrides,
       }),
@@ -63,6 +71,22 @@ export async function runReportScenarios(directory, environment) {
       join(artifact, "checks.json"),
       JSON.stringify({ fixture: true, outcome }),
     );
+    if (outcome === "passed") {
+      await writeFile(
+        join(artifact, "editor-checks.json"),
+        JSON.stringify({
+          properties: coreProperties,
+          savedProperties: coreProperties,
+          unchangedProperties: [],
+          text: { applicable: false },
+          checks: ["select", "invalid", "controls", "save", "undo", "hide"],
+        }),
+      );
+      await writeFile(
+        join(artifact, "hidden.png"),
+        "fixture-artifact-not-website-evidence",
+      );
+    }
   }
   async function report(name) {
     const output = join(directory, name);
@@ -98,6 +122,39 @@ export async function runReportScenarios(directory, environment) {
   await record(base, cases[0], "product-failed", "2026-10-22T00:00:00Z");
   await record(base, cases[1], "passed", "2026-10-22T00:00:00Z");
   await record(update, cases[0], "passed", "2026-10-22T01:00:00Z");
+  // Explicit input owns the default destination even when another latest/root
+  // fallback exists. Keep a sentinel to prove unrelated reports stay untouched.
+  const unrelated = join(directory, "unrelated-fallback");
+  await mkdir(unrelated, { recursive: true });
+  const sentinel = { untouched: true };
+  await writeFile(
+    join(unrelated, "catalog-results.json"),
+    JSON.stringify(sentinel),
+  );
+  await promisify(execFile)(
+    process.execPath,
+    ["scripts/report-sites.mjs", "--roots", update],
+    {
+      env: {
+        ...process.env,
+        TAYLR_RUN_ROOT: unrelated,
+        TAYLR_SITES: "",
+        TAYLR_COMPONENTS: "",
+        TAYLR_CASES: "",
+      },
+    },
+  );
+  assert.ok(
+    await readFile(join(update, "catalog-results.json"), "utf8")
+      .then(JSON.parse)
+      .catch(() => null),
+    "a single explicit root without output must receive its own report",
+  );
+  assert.deepEqual(
+    JSON.parse(await readFile(join(unrelated, "catalog-results.json"), "utf8")),
+    sentinel,
+    "single-root reporting must not overwrite an unrelated fallback report",
+  );
   let result = await report("supplement");
   assert.equal(result.code, 0);
   assert.equal(
@@ -110,6 +167,79 @@ export async function runReportScenarios(directory, environment) {
   );
   assert.equal(chosen.sourceRoot, update);
   await readFile(resolve(result.output, chosen.evidence, "checks.json"));
+
+  await rm(join(update, "sites", site.id, cases[0].id, "editor-checks.json"), {
+    force: true,
+  });
+  result = await report("missing-editor-evidence");
+  assert.notEqual(
+    result.code,
+    0,
+    "a pass without editor evidence must be rejected",
+  );
+  await record(update, cases[0], "passed", "2026-10-22T01:00:00Z");
+
+  for (const { name, weakened } of [
+    { name: "missing-save-properties", weakened: { savedProperties: [] } },
+    {
+      name: "missing-editor-checkpoint",
+      weakened: { checks: ["one", "two", "three", "four", "five"] },
+    },
+    {
+      name: "blank-editor-checkpoints",
+      weakened: { checks: [" ", "", "\t", "\n", "  ", "   "] },
+    },
+    {
+      name: "nonstring-editor-checkpoints",
+      weakened: {
+        checks: ["select", "invalid", "controls", "save", "undo", 17],
+      },
+    },
+    {
+      name: "duplicate-editor-checkpoints",
+      weakened: {
+        checks: ["select", "invalid", "controls", "save", "undo", "undo"],
+      },
+    },
+    { name: "missing-saved-text", weakened: { text: { applicable: true } } },
+  ]) {
+    await record(update, cases[0], "passed", "2026-10-22T01:00:00Z");
+    const path = join(
+      update,
+      "sites",
+      site.id,
+      cases[0].id,
+      "editor-checks.json",
+    );
+    const editor = JSON.parse(await readFile(path, "utf8"));
+    await writeFile(path, JSON.stringify({ ...editor, ...weakened }));
+    result = await report(name);
+    assert.notEqual(result.code, 0, `${name} must not count as a pass`);
+  }
+
+  await record(update, cases[0], "passed", "2026-10-22T01:00:00Z");
+  const noOpPath = join(
+    update,
+    "sites",
+    site.id,
+    cases[0].id,
+    "editor-checks.json",
+  );
+  const noOp = JSON.parse(await readFile(noOpPath, "utf8"));
+  await writeFile(
+    noOpPath,
+    JSON.stringify({
+      ...noOp,
+      savedProperties: coreProperties.filter((key) => key !== "border-style"),
+      unchangedProperties: ["border-style"],
+    }),
+  );
+  result = await report("verified-no-op");
+  assert.equal(
+    result.code,
+    0,
+    "verified baseline values do not need redundant stored declarations",
+  );
 
   await record(base, cases[0], "passed", "2026-10-22T00:00:00Z");
   await record(update, cases[0], "product-failed", "2026-10-22T01:00:00Z");
@@ -139,6 +269,7 @@ export async function runReportScenarios(directory, environment) {
   await record(update, cases[0], "passed", "2026-10-22T01:00:00Z", {
     fingerprint: "obsolete",
   });
+  await rm(join(update, "sites", site.id, cases[0].id, "editor-checks.json"));
   result = await report("stale-rerun");
   assert.equal(
     result.catalog.rows.find(
@@ -162,7 +293,10 @@ export async function runReportScenarios(directory, environment) {
   await record(update, cases[0], "passed", "2026-10-22T01:00:00Z");
   result = await report("missing-union-contract");
   assert.equal(result.code, 1);
-  assert.equal(result.catalog.counts.unrun, 1);
+  assert.equal(
+    result.catalog.counts.unrun,
+    site.components.length - cases.length,
+  );
   await manifest(update, mode, [cases[0]]);
 
   await record(update, cases[0], "passed", "2026-10-22T01:00:00Z", {

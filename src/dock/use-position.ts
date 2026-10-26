@@ -159,8 +159,9 @@ export function usePosition(open: boolean) {
     if (event.currentTarget.hasPointerCapture(event.pointerId))
       event.currentTarget.releasePointerCapture(event.pointerId);
     if (current.moved) {
-      const vx = event.type === "pointercancel" ? 0 : x.getVelocity(),
-        vy = event.type === "pointercancel" ? 0 : y.getVelocity();
+      const vx =
+          reduced || event.type === "pointercancel" ? 0 : x.getVelocity(),
+        vy = reduced || event.type === "pointercancel" ? 0 : y.getVelocity();
       // Apple's deceleration projection with the snappier .99 rate, bounded to the viewport.
       const project = (v: number) => ((v / 1000) * 0.99) / (1 - 0.99);
       place(x.get() + project(vx), y.get() + project(vy), vx, vy, true);

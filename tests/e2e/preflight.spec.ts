@@ -1,3 +1,4 @@
+import { createServer } from "node:http";
 import { expect, test } from "@playwright/test";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
@@ -58,6 +59,14 @@ test("Runner preflight: missing browser stops before component launches", async 
 // Playwright requires a destructured fixture parameter for testInfo.
 // oxlint-disable-next-line no-empty-pattern
 test("Runner ownership: an occupied fixture server fails before cases launch", async ({}, testInfo) => {
+  const server = createServer((_, response) =>
+    response.end("Owned fixture probe"),
+  );
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string")
+    throw new Error("No fixture port");
+  const occupiedUrl = `http://127.0.0.1:${address.port}`;
   const directory = testInfo.outputPath("occupied-server");
   await mkdir(directory, { recursive: true });
   await writeFile(
@@ -66,7 +75,7 @@ test("Runner ownership: an occupied fixture server fails before cases launch", a
   );
   await writeFile(
     join(directory, "config.ts"),
-    `import config from ${JSON.stringify(resolve("playwright.config.ts"))};\nexport default { ...config, testDir: ${JSON.stringify(directory)}, testMatch: "probe.spec.ts", reporter: "list", outputDir: ${JSON.stringify(join(directory, "results"))} };`,
+    `import config from ${JSON.stringify(resolve("playwright.config.ts"))};\nexport default { ...config, testDir: ${JSON.stringify(directory)}, testMatch: "probe.spec.ts", reporter: "list", outputDir: ${JSON.stringify(join(directory, "results"))}, webServer: { command: "node -e process.exit(99)", url: ${JSON.stringify(occupiedUrl)}, reuseExistingServer: false } };`,
   );
   const result = await new Promise<{ code: number | null; output: string }>(
     (resolveResult, reject) => {
@@ -90,6 +99,9 @@ test("Runner ownership: an occupied fixture server fails before cases launch", a
       child.on("error", reject);
       child.on("exit", (code) => resolveResult({ code, output }));
     },
+  );
+  await new Promise<void>((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
   );
   await testInfo.attach("ownership-probe", {
     body: result.output,

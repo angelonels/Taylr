@@ -17,9 +17,15 @@ export default defineConfig({
     actionTimeout: 15000,
     navigationTimeout: 60000,
   },
-  webServer: {
-    command: "npm run dev",
-    url: "http://127.0.0.1:5173/tests/fixture.html",
-    reuseExistingServer: false,
-  },
+  // Public-site contracts never visit the local fixture. They must not claim
+  // its port or depend on an unrelated development server being stopped.
+  webServer:
+    process.env.TAYLR_LIVE_SITES === "1" ||
+    process.env.TAYLR_FIXTURE_MODE === "route"
+      ? undefined
+      : {
+          command: "npm run dev",
+          url: "http://127.0.0.1:5173/tests/fixture.html",
+          reuseExistingServer: false,
+        },
 });

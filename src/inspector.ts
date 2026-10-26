@@ -1,7 +1,11 @@
+import type { EditState } from "./element-editor";
 import type { SiteProfile } from "./model";
 
 export interface InspectorState {
   open: boolean;
+  mode: "hide" | "edit";
+  editor: EditState | null;
+  editorDirty: boolean;
   picking: boolean;
   busy: boolean;
   profile: SiteProfile;
@@ -18,7 +22,12 @@ export interface Inspector {
   setHost(host: HTMLElement): void;
   toggle(): void;
   close(): void;
-  start(): Promise<void>;
+  start(mode?: "hide" | "edit"): Promise<void>;
+  editStyle(key: string, value: string): void;
+  editText(value: string): void;
+  resetStyle(key: string): void;
+  saveEdit(): Promise<boolean>;
+  pickAgain(): void;
   stop(): void;
   hide(): Promise<void>;
   undo(): Promise<void>;

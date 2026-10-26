@@ -1,3 +1,4 @@
+import type { StylePatch } from "./edit-properties";
 export interface ComponentPreview {
   dataUrl: string;
   width: number;
@@ -11,7 +12,11 @@ export interface ComponentSummary {
   width: number;
   height: number;
 }
-export interface HideRule {
+export interface Rule {
+  kind?: "edit";
+  styles?: StylePatch;
+  text?: string;
+  revision?: string;
   summary?: ComponentSummary;
   preview?: ComponentPreview;
   id: string;
@@ -22,10 +27,25 @@ export interface HideRule {
 export interface SiteProfile {
   version: 1;
   origin: string;
-  rules: HideRule[];
+  rules: Rule[];
   paused?: boolean;
 }
 export type Request =
+  | {
+      type: "edit";
+      origin: string;
+      selector: string;
+      label: string;
+      styles: StylePatch;
+      text?: string;
+    }
+  | {
+      type: "undo-edit";
+      origin: string;
+      id: string;
+      revision: string;
+      before?: Rule;
+    }
   | { type: "get" | "restore"; origin: string }
   | { type: "set-paused"; origin: string; paused: boolean }
   | {
@@ -38,8 +58,22 @@ export type Request =
     }
   | { type: "remove"; origin: string; id: string };
 export type Response =
-  | { profile: SiteProfile; createdRuleId?: string; error?: never }
-  | { error: string; profile?: never };
+  | {
+      profile: SiteProfile;
+      createdRuleId?: string;
+      savedRule?: Rule;
+      previousRule?: Rule;
+      error?: never;
+    }
+  | { error: string; code?: "revision-conflict"; profile?: never };
+export class RequestError extends Error {
+  constructor(
+    message: string,
+    readonly code?: "revision-conflict",
+  ) {
+    super(message);
+  }
+}
 export const storageArea = () =>
   chrome.extension.inIncognitoContext ? "session" : "local";
 export const storageKey = (origin: string) =>
@@ -47,11 +81,17 @@ export const storageKey = (origin: string) =>
 export async function requestResult(message: Request) {
   const result: Response = await chrome.runtime.sendMessage(message);
   if (!result || result.error)
-    throw new Error(
+    throw new RequestError(
       result?.error ||
         "Taylr could not connect. Reload the page and try again.",
+      result?.error ? result.code : undefined,
     );
-  return result as { profile: SiteProfile; createdRuleId?: string };
+  return result as {
+    profile: SiteProfile;
+    createdRuleId?: string;
+    savedRule?: Rule;
+    previousRule?: Rule;
+  };
 }
 
 export async function request(message: Request): Promise<SiteProfile> {

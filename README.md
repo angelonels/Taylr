@@ -1,20 +1,23 @@
 # Taylr
 
-Hide page elements and restore them later. Rules and cropped previews stay on your device.
+Edit or hide page elements and restore them later. Rules and cropped previews stay on your device.
 
 ## Use
 
 Click Taylr’s Chrome toolbar icon to open the floating panel.
 
+- **Edit:** click an element to lock the selection, then preview changes to text, colors, typography and borders. Sliders and steppers handle values and units; **Advanced** holds size, aspect ratio, padding, margins and gaps on existing rows/grids. Save keeps changes; Cancel or Escape discards the draft. Escape closes an open menu first; Done leaves a clean editor. Reset returns a field to its value when selected. Parent/Child refines the locked selection; Hide uses that same element.
 - **Hide:** click a page element, or use ↑/↓ to select its parent/child and Enter to hide. Escape, Cancel or Done ends selection.
-- **Undo:** reverse changes from the current selection session.
-- **Rules:** inspect local previews and restore one element or all rules for this site.
-- **Site:** pause/resume hiding without deleting rules, or open Chrome’s access settings.
-- **Move:** drag the grip, click it to switch edges, or focus it and use arrow keys. Home resets placement. Close dismisses the panel.
+- **Undo:** reverse this session’s changes while preserving newer saves from other tabs.
+- **Edits:** inspect local previews and restore one element or all changes for this site.
+- **Site:** pause/resume all saved changes without deleting changes, or open Chrome’s access settings.
+- **Move:** drag the grip, click it to switch edges, or focus it and use arrow keys. Home resets placement. Fold compacts the panel; Close dismisses it.
 
 Rules apply to an exact origin (scheme, hostname and port). Installation requests HTTP/HTTPS access; Chrome controls the actual grant. Internal pages, the Web Store, iframe interiors and shadow-root interiors are unsupported. Website changes can invalidate saved selectors.
 
-Regular rules and pause settings use local storage. Private rules, previews and pause settings use isolated session storage and clear on browser restart or extension reload. Panel position and disclosures are transient. No account, server or telemetry is involved.
+Text editing supports leaf text without replacing nested controls. Form fields and existing page editors are excluded. CSS controls change declarations, not website source files; layout can limit their visible effect. Text updates yield if a site repeatedly overwrites them.
+
+Regular rules and pause settings use local storage. Incognito rules, previews and pause settings use isolated session storage and clear on browser restart or extension reload. Panel position, disclosures and color-picker preferences are transient. No account, server or telemetry is involved.
 
 ## Develop
 

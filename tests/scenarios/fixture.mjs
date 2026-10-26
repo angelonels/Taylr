@@ -1,6 +1,6 @@
 import { evidencePath } from "../run-evidence.mjs";
 import { expect } from "@playwright/test";
-import { driver, openDock } from "../dock-actions.mjs";
+import { driver, openDock, startHide } from "../dock-actions.mjs";
 
 export async function runFixture(context, extensionId) {
   await context.tracing.start({
@@ -304,7 +304,7 @@ export async function runFixture(context, extensionId) {
     await page.getByRole("button", { name: "Undo", exact: true }).click();
     await expect(page.locator("#nested")).toBeVisible();
     await page.getByRole("button", { name: "Done", exact: true }).click();
-    await dock.getByRole("button", { name: "Hide", exact: true }).click();
+    await startHide(dock);
     await page.bringToFront();
     await page.locator("#distraction").click();
     await expect(page.locator("#distraction")).toBeHidden();
@@ -319,7 +319,7 @@ export async function runFixture(context, extensionId) {
     await reopen();
     await restore();
     await expect(page.locator("#distraction")).toBeVisible();
-    await dock.getByRole("button", { name: "Hide", exact: true }).click();
+    await startHide(dock);
     await page.locator("#distraction").click();
     const other = await panel.evaluate(() =>
       chrome.runtime.sendMessage({

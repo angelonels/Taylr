@@ -1,7 +1,7 @@
 import { evidencePath } from "../run-evidence.mjs";
 import { test, expect } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
-import { driver, openDock } from "../dock-actions.mjs";
+import { driver, openDock, startHide } from "../dock-actions.mjs";
 
 // Failure contracts: delayed mutation replies must never repaint newer broadcasts;
 // closing during Save must remain possible, without transferring Undo ownership.
@@ -68,7 +68,7 @@ test("Ordered state: delayed Save and Restore replies cannot overwrite newer rul
         { type, selector },
       );
     await hold("add");
-    await dock.locator("#hide").click();
+    await startHide(dock);
     await page.locator("#distraction").click();
     await expect(page.locator("#distraction")).toBeHidden();
     await dock.locator("#close").click();

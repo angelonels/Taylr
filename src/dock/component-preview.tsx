@@ -1,7 +1,7 @@
 import { useId, useEffect, useRef, useState, type CSSProperties } from "react";
-import type { HideRule } from "../model";
+import type { Rule } from "../model";
 
-export function ComponentPreview({ rule }: { rule: HideRule }) {
+export function ComponentPreview({ rule }: { rule: Rule }) {
   const imageId = useId();
   const [expanded, setExpanded] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null);

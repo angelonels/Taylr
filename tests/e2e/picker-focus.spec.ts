@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
-import { driver, openDock } from "../dock-actions.mjs";
+import { driver, openDock, startHide } from "../dock-actions.mjs";
 import { evidencePath } from "../run-evidence.mjs";
 
 // Failure first: site-driven focus events are trusted too. A focus manager must
@@ -17,7 +17,7 @@ test("Picker refinement survives page-driven focus changes", async () => {
     const page = await instance.context.newPage();
     await page.goto("http://127.0.0.1:5173/tests/fixture.html");
     const dock = await openDock(instance.context, bridge, page);
-    await dock.locator("#hide").click();
+    await startHide(dock);
     await expect(
       page.getByRole("region", { name: "Taylr Hide" }),
     ).toBeVisible();
@@ -69,7 +69,7 @@ test("Picker follows the same hovered component after Undo and site focus", asyn
     const page = await context.newPage();
     await page.goto("http://127.0.0.1:5173/tests/fixture.html");
     const dock = await openDock(context, bridge, page);
-    await dock.locator("#hide").click();
+    await startHide(dock);
     await expect(
       page.getByRole("region", { name: "Taylr Hide" }),
     ).toBeVisible();

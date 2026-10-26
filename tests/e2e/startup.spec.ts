@@ -6,7 +6,7 @@ import { evidencePath } from "../run-evidence.mjs";
 
 // Failure first: automatic focus on first open must retain the primary fill,
 // legible text and a keyboard focus indicator, in both idle and picking states.
-test("Startup: focused Hide retains contrast on first open and reopen", async () => {
+test("Startup: focused start action and active Hide retain contrast", async () => {
   const instance = await isolatedBrowser();
   const { context, extensionId, worker } = instance;
   await context.tracing.start({
@@ -56,10 +56,14 @@ test("Startup: focused Hide retains contrast on first open and reopen", async ()
         return Math.min(
           ...[10, Math.floor(img.height / 2), img.height - 10].map((y) => {
             const background = luminance(
-              Array.from(ctx.getImageData(img.width - 24, y, 1, 1).data).slice(
-                0,
-                3,
-              ),
+              Array.from(
+                ctx.getImageData(
+                  img.width - (button.id === "start-edit" ? 10 : 24),
+                  y,
+                  1,
+                  1,
+                ).data,
+              ).slice(0, 3),
             );
             return (
               (Math.max(foreground, background) + 0.05) /
@@ -70,7 +74,8 @@ test("Startup: focused Hide retains contrast on first open and reopen", async ()
       }, pixels);
       expect(contrast).toBeGreaterThanOrEqual(4.5);
     };
-    await checkContrast();
+    await expect(dock.locator("#start-edit")).toBeFocused();
+    await checkContrast(true, dock.locator("#start-edit"));
     // Small header text must remain legible on the brightest website backdrop,
     // not only inside the primary control's additional glass backing.
     await page.evaluate(() => {
@@ -102,7 +107,7 @@ test("Startup: focused Hide retains contrast on first open and reopen", async ()
     await hide.press("Enter");
     await expect(hide).toHaveAttribute("aria-pressed", "true");
     await checkContrast();
-    // Pointer hover must preserve coral picking feedback after clicking Hide.
+    // Pointer hover must preserve blue picking feedback after clicking Hide.
     await hide.hover();
     await checkContrast();
     await expect(hide).toHaveAttribute("aria-pressed", "true");
@@ -110,7 +115,8 @@ test("Startup: focused Hide retains contrast on first open and reopen", async ()
     await dock.locator("#close").click();
     await invokeAction(context, bridge, page);
     // Pointer-origin focus need not match :focus-visible; readability still must.
-    await checkContrast(false);
+    await expect(dock.locator("#start-edit")).toBeFocused();
+    await checkContrast(false, dock.locator("#start-edit"));
     // Choosing another control during the pending check must keep that focus.
     await hide.press("Enter");
     await expect(hide).toHaveAttribute("aria-busy", "true");

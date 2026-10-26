@@ -1,5 +1,5 @@
 import { build } from "vite";
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
 import { Resvg } from "@resvg/resvg-js";
 const { version } = JSON.parse(await readFile("package.json", "utf8"));
 await build({
@@ -22,18 +22,33 @@ for (const [entry, extension] of [
       },
     },
   });
+// Include runtime dependency notices even when minification drops comments.
+const lock = JSON.parse(await readFile("package-lock.json", "utf8"));
+let notices = await readFile("THIRD_PARTY_NOTICES.md", "utf8");
+for (const [path, dependency] of Object.entries(lock.packages)) {
+  if (!path.startsWith("node_modules/") || dependency.dev) continue;
+  const metadata = JSON.parse(await readFile(`${path}/package.json`, "utf8"));
+  const files = (await readdir(path)).filter((file) =>
+    /^licen[cs]e(?:\..*)?$/i.test(file),
+  );
+  const license = files.length
+    ? `${path}/${files.sort()[0]}`
+    : `assets/licenses/${metadata.name.replaceAll("/", "-")}.txt`;
+  notices += `\n\n---\n\n## ${metadata.name} ${metadata.version}\n\n${await readFile(license, "utf8")}`;
+}
+await writeFile("dist/THIRD_PARTY_NOTICES.md", notices);
 await mkdir("dist/icons", { recursive: true });
-const mark = await readFile("assets/mark.svg", "utf8");
+const markImage = await readFile("assets/taylr-mark.png");
+const mark = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><image width="160" height="160" href="data:image/png;base64,${markImage.toString("base64")}"/></svg>`;
 for (const size of [16, 32, 48, 128]) {
   await writeFile(
     `dist/icons/icon-${size}.png`,
     new Resvg(mark, { fitTo: { mode: "width", value: size } }).render().asPng(),
   );
-  const active = mark
-    .replaceAll("#f4f2ec", "#ffdfeb")
-    .replaceAll("#b5b4aa", "#ed688c")
-    .replaceAll("#77796f", "#af3c67")
-    .replaceAll("#d4d3c9", "#ff9db8");
+  const active = mark.replace(
+    "</svg>",
+    '<circle cx="133" cy="133" r="21" fill="#0a64da" stroke="#fff" stroke-width="7"/></svg>',
+  );
   await writeFile(
     `dist/icons/active-${size}.png`,
     new Resvg(active, { fitTo: { mode: "width", value: size } })
@@ -48,7 +63,7 @@ await writeFile(
       manifest_version: 3,
       name: "Taylr",
       version,
-      description: "Hide page elements and restore them later.",
+      description: "Edit or hide page elements and restore them later.",
       permissions: ["activeTab", "scripting", "storage"],
       host_permissions: ["https://*/*", "http://*/*"],
       background: { service_worker: "background.js" },

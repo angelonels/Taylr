@@ -2,7 +2,7 @@ import { test } from "@playwright/test";
 import { evidenceFingerprint, evidenceIdentity } from "../evidence.mjs";
 import { classifyFailure, evidencePath } from "../run-evidence.mjs";
 import { readFileSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
 const sites = JSON.parse(
   readFileSync(new URL("../sites.json", import.meta.url), "utf8"),
 );
@@ -96,6 +96,27 @@ async function run(id: string, component?: ComponentContract) {
       retain(error, "artifacts");
       serialized = record();
     }
+    if (site && id !== "fixture") {
+      const path = evidencePath("sites", id, site.caseId, "checks.json");
+      try {
+        const checkpoints = JSON.parse(await readFile(path, "utf8"));
+        await writeFile(
+          path,
+          JSON.stringify(
+            {
+              ...checkpoints,
+              outcome: failure?.outcome ?? result?.outcome ?? "harness-error",
+              finalizationErrors,
+            },
+            null,
+            2,
+          ),
+        );
+      } catch (error) {
+        if (error.code !== "ENOENT") retain(error, "artifacts");
+      }
+      serialized = record();
+    }
     try {
       await mkdir(evidencePath("session-results"), { recursive: true });
       await writeFile(
@@ -117,7 +138,7 @@ async function run(id: string, component?: ComponentContract) {
   if (failure) throw failure;
 }
 
-test("Hide: click safety, scope, persistence, dynamic DOM, Undo, Restore, keyboard, and reflow", async () => {
+test("Edit and Hide: click safety, scope, persistence, dynamic DOM, Undo, Restore, keyboard, and reflow", async () => {
   await run("fixture");
 });
 if (process.env.TAYLR_LIVE_SITES === "1")

@@ -1,40 +1,56 @@
 import { writeFile } from "node:fs/promises";
 import { VerificationError } from "./run-evidence.mjs";
+import { within } from "./deadline.mjs";
 
-// Capture the rendered Chromium surface without Playwright's document.fonts.ready gate.
-// A stalled third-party font must not prevent unrelated behavior verification.
+// Bound capture and detach separately. A busy renderer must not strand a test
+// before its original failure can be recorded, or leave its CDP session live.
 export async function captureEvidence(
   page,
   path,
   { locator, timeout = 5000 } = {},
 ) {
-  const session = await page.context().newCDPSession(page);
-  let timer;
+  let abandoned = false;
+  let session;
+  const detach = (attached) =>
+    within(() => attached.detach(), 500, "Evidence detach").catch(() => {});
   try {
-    const clip = locator ? await locator.boundingBox() : undefined;
-    if (locator && !clip)
-      throw new Error("Evidence component has no visible bounds");
-    if (clip) {
-      // Locator bounds are viewport-relative; CDP clips use document coordinates.
-      const offset = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
-      clip.x += offset.x;
-      clip.y += offset.y;
-    }
-    const image = await Promise.race([
-      session.send("Page.captureScreenshot", {
-        format: "png",
-        fromSurface: true,
-        captureBeyondViewport: false,
-        ...(clip ? { clip: { ...clip, scale: 1 } } : {}),
-      }),
-      new Promise((_, reject) => {
-        timer = setTimeout(
-          () => reject(new Error(`Evidence capture exceeded ${timeout}ms`)),
-          timeout,
-        );
-      }),
-    ]);
-    await writeFile(path, Buffer.from(image.data, "base64"));
+    await within(
+      async () => {
+        if (page.isClosed()) throw new Error("Evidence page is closed");
+        const attached = await page.context().newCDPSession(page);
+        if (abandoned) {
+          await detach(attached);
+          return;
+        }
+        session = attached;
+        if (page.isClosed()) throw new Error("Evidence page is closed");
+        const clip = locator
+          ? await locator.boundingBox({ timeout })
+          : undefined;
+        if (locator && !clip)
+          throw new Error("Evidence component has no visible bounds");
+        if (clip) {
+          const offset = await page.evaluate(() => ({
+            x: scrollX,
+            y: scrollY,
+          }));
+          clip.x += offset.x;
+          clip.y += offset.y;
+        }
+        if (abandoned) return;
+        if (page.isClosed()) throw new Error("Evidence page is closed");
+        const image = await attached.send("Page.captureScreenshot", {
+          format: "png",
+          fromSurface: true,
+          captureBeyondViewport: false,
+          ...(clip ? { clip: { ...clip, scale: 1 } } : {}),
+        });
+        if (!abandoned)
+          await writeFile(path, Buffer.from(image.data, "base64"));
+      },
+      timeout,
+      "Evidence capture",
+    );
   } catch (error) {
     throw new VerificationError(error.message, {
       outcome: "harness-error",
@@ -42,7 +58,7 @@ export async function captureEvidence(
       cause: error,
     });
   } finally {
-    clearTimeout(timer);
-    await session.detach().catch(() => {});
+    abandoned = true;
+    if (session) await detach(session);
   }
 }

@@ -30,8 +30,12 @@ function sourceHash(paths) {
 export function evidenceIdentity(site, component) {
   build ??= sourceHash(["dist"]);
   harness ??= sourceHash([
+    "scripts/report-sites.mjs",
+    "scripts/run-tests.mjs",
     "tests/scenarios/live.mjs",
+    "tests/scenarios/editor.mjs",
     "tests/capture.mjs",
+    "tests/deadline.mjs",
     "tests/isolated-browser.mjs",
     "tests/dock-actions.mjs",
     "tests/run-evidence.mjs",
@@ -45,8 +49,13 @@ export function evidenceIdentity(site, component) {
       origins: site.origins,
       dismiss: site.dismiss,
       readyUrl: site.readyUrl,
+      readySelector: site.readySelector,
       invariant: site.invariant,
-      component,
+      component: Object.fromEntries(
+        ["id", "target", "keep", "targetIndex", "keepIndex", "identity"]
+          .filter((key) => component[key] !== undefined)
+          .map((key) => [key, component[key]]),
+      ),
     }),
   );
   return { build, harness, contract };

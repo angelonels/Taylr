@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
-import { driver, openDock } from "../dock-actions.mjs";
+import { driver, openDock, startHide } from "../dock-actions.mjs";
 import { evidencePath } from "../run-evidence.mjs";
 
 // Failure contracts: glass loses legibility over busy pages; pointer feedback
@@ -54,6 +54,9 @@ test("Glass panel: material, input feedback and platform preferences", async () 
       "none",
     );
     await page.keyboard.up("Space");
+    // Registration is asynchronous; test Escape from the picking state rather
+    // than racing it against the legitimate close action while still idle.
+    await expect(hide).toHaveAttribute("aria-pressed", "true");
     await page.keyboard.press("Escape");
     await page.screenshot({ path: evidencePath("glass-panel.png") });
     await dock.locator("#rules-toggle").click();
@@ -168,7 +171,7 @@ test("Frosted glass transmits the page behind the panel", async () => {
         el.style.background = `repeating-linear-gradient(125deg, transparent 0 65px, #ffffff80 65px 115px), radial-gradient(ellipse at 90% 20%, #447eff, transparent 45%), radial-gradient(ellipse at 85% 60%, #ff745e, transparent 35%), ${theme === "light" ? "#edf3f8" : "#101522"}`;
       }, theme);
       await page.screenshot({ path: evidencePath(`frosted-${theme}.png`) });
-      await dock.locator("#hide").click();
+      await startHide(dock);
       await expect
         .poll(() =>
           dock

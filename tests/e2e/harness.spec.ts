@@ -106,6 +106,8 @@ test("Harness: manual contexts enforce bounded locator actions", async () => {
 
 // Failure first: a healthy vendor application title is not positive evidence of a challenge.
 test("Harness: healthy Cloudflare Dashboard title can complete Hide", async () => {
+  // Full editing journey plus four application visits, not a failure deadline.
+  test.setTimeout(60000);
   const site = {
     id: "harness-healthy-vendor",
     caseId: "primary",
@@ -132,6 +134,8 @@ test("Harness: healthy Cloudflare Dashboard title can complete Hide", async () =
 
 // Failure first: optional evidence capture must not depend on third-party font completion.
 test("Harness: an unresolved font cannot prevent Hide verification", async () => {
+  // Full editing journey plus four application visits, not a failure deadline.
+  test.setTimeout(60000);
   const site = {
     id: "harness-pending-font",
     caseId: "primary",
@@ -167,6 +171,8 @@ test("Harness: an unresolved font cannot prevent Hide verification", async () =>
 
 // Failure first: visible shells can precede state hydration on each reload or new tab.
 test("Harness: exact application invariants await revisit hydration", async () => {
+  // Full editing journey plus four application visits, not a failure deadline.
+  test.setTimeout(60000);
   const site = {
     id: "harness-revisit-hydration",
     caseId: "primary",
@@ -295,6 +301,8 @@ test("Harness: action tab identity survives canonical URL races and reload", asy
 // Failure first: the site can reflow after hit testing but before a native
 // pointer move. Resampling must retain the same declared component and checks.
 test("Harness: selection recovers when the target moves after point sampling", async () => {
+  // Full editing journey plus four application visits, not a failure deadline.
+  test.setTimeout(60000);
   const site = {
     id: "harness-moving-target",
     caseId: "reflow",
@@ -344,6 +352,8 @@ test("Harness: selection recovers when the target moves after point sampling", a
 // Failure first: hydration may replace the declared component while the user
 // refines its nested hit. Only a disconnected node permits reacquisition.
 test("Harness: selection reacquires a replaced declared component", async () => {
+  // Full editing journey plus four application visits, not a failure deadline.
+  test.setTimeout(60000);
   const site = {
     id: "harness-replaced-target",
     caseId: "replacement",
@@ -356,9 +366,14 @@ test("Harness: selection reacquires a replaced declared component", async () => 
   try {
     await instance.context.addInitScript(() => {
       window.addEventListener(
-        "keydown",
+        "click",
         (event) => {
-          if (event.key !== "ArrowUp" || sessionStorage.getItem("replacements"))
+          if (
+            sessionStorage.getItem("replacements") ||
+            !event
+              .composedPath()
+              .some((node) => node instanceof Element && node.id === "parent")
+          )
             return;
           const target = document.querySelector("#hydrated");
           if (!target) return;
@@ -393,3 +408,61 @@ test("Harness: selection reacquires a replaced declared component", async () => 
     await instance.close();
   }
 });
+
+// Failure first: a site may open a genuine modal authentication wall after
+// baseline readiness. Keep it blocked, while a nonmodal login prompt stays usable.
+for (const modal of [false, true]) {
+  test(`Harness: ${modal ? "late modal" : "nonmodal"} authentication is classified from observed UI`, async () => {
+    test.setTimeout(30000);
+    const site = {
+      id: `harness-auth-${modal}`,
+      caseId: "auth",
+      component: "auth-covered target",
+      url: "http://127.0.0.1:5173/harness-auth",
+      target: "#target",
+      keep: "#retained",
+    };
+    const instance = await isolatedBrowser(site);
+    if (modal) {
+      let opened = false;
+      const createPage = instance.context.newPage.bind(instance.context);
+      instance.context.newPage = async (...args) => {
+        const page = await createPage(...args);
+        const move = page.mouse.move.bind(page.mouse);
+        page.mouse.move = async (...args) => {
+          if (!opened && page.url() === site.url) {
+            opened = true;
+            await page.evaluate(() => {
+              const wall = document.createElement("div");
+              wall.setAttribute("role", "dialog");
+              wall.setAttribute("aria-modal", "true");
+              wall.style.cssText =
+                "position:fixed;inset:0;z-index:10001;background:#fff9";
+              wall.textContent = "Log in to continue";
+              document.body.append(wall);
+            });
+          }
+          return move(...args);
+        };
+        return page;
+      };
+    }
+    try {
+      await instance.context.route(site.url, (route) =>
+        route.fulfill({
+          contentType: "text/html",
+          body: `<!doctype html><title>Authentication fixture</title><style>#target{position:absolute;left:100px;top:200px;width:220px;height:60px;background:plum}#retained{position:absolute;left:500px;top:200px}</style><section id="target">Target component</section><p id="retained">Retained content</p>${modal ? "" : '<aside role="dialog" style="position:absolute;top:500px;left:100px">Log in for more features</aside>'}`,
+        }),
+      );
+      const result = runLiveSite(instance.context, instance.extensionId, site);
+      if (modal)
+        await expect(result).rejects.toMatchObject({
+          outcome: "blocked",
+          access: { loginDialog: true },
+        });
+      else expect((await result).checks).toHaveLength(6);
+    } finally {
+      await instance.close();
+    }
+  });
+}

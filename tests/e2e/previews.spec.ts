@@ -2,7 +2,7 @@ import { evidencePath } from "../run-evidence.mjs";
 import { test, expect } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import { isolatedBrowser } from "../isolated-browser.mjs";
-import { driver, openDock } from "../dock-actions.mjs";
+import { driver, openDock, startHide } from "../dock-actions.mjs";
 
 // Failure contracts: a real capture followed by reflow, scroll, or removal must
 // never save pixels from the old rectangle. The requested Hide still commits.
@@ -53,11 +53,7 @@ for (const change of ["reflow", "scroll", "disconnect"]) {
         },
         { url: page.url(), change },
       );
-      await dock.locator("#hide").click();
-      await expect(dock.locator("#hide")).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      await startHide(dock);
       await page.locator("#distraction").click();
       await expect(page.locator("html")).toHaveAttribute(
         "data-captured",
@@ -103,11 +99,7 @@ for (const capture of [true, false]) {
       const page = await context.newPage();
       await page.goto("http://127.0.0.1:5173/tests/fixture.html");
       const dock = await openDock(context, bridge, page);
-      await dock.locator("#hide").click();
-      await expect(dock.locator("#hide")).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      await startHide(dock);
       await page.locator("#distraction").click();
       await expect(page.locator("#distraction")).toBeHidden();
       await dock.locator("#rules-toggle").click();
@@ -182,8 +174,7 @@ test("Preview isolation: CSP, inactive page, and storage pressure", async () => 
       document.head.append(meta);
     });
     const dock = await openDock(context, bridge, page);
-    await dock.locator("#hide").click();
-    await expect(dock.locator("#hide")).toHaveAttribute("aria-pressed", "true");
+    await startHide(dock);
     await page.locator("#distraction").click();
     await expect(page.locator("#distraction")).toBeHidden();
     await dock.locator("#rules-toggle").click();
@@ -224,8 +215,7 @@ test("Preview isolation: CSP, inactive page, and storage pressure", async () => 
         return original(value);
       };
     });
-    await dock.locator("#hide").click();
-    await expect(dock.locator("#hide")).toHaveAttribute("aria-pressed", "true");
+    await startHide(dock);
     await page.locator("#distraction").click();
     await expect(page.locator("#distraction")).toBeHidden();
     await dock.locator("#rules-toggle").click();
@@ -255,8 +245,7 @@ test("Paused animation frames: preview deadline still saves Hide", async () => {
     const page = await context.newPage();
     await page.goto("http://127.0.0.1:5173/tests/fixture.html");
     const dock = await openDock(context, bridge, page);
-    await dock.locator("#hide").click();
-    await expect(dock.locator("#hide")).toHaveAttribute("aria-pressed", "true");
+    await startHide(dock);
     await bridge.evaluate(async (url) => {
       const tab = (await chrome.tabs.query({})).find((t) => t.url === url);
       await chrome.scripting.executeScript({

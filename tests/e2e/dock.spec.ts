@@ -1,7 +1,7 @@
 import { evidencePath } from "../run-evidence.mjs";
 import { test, expect } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
-import { driver, openDock, invokeAction } from "../dock-actions.mjs";
+import { driver, openDock, invokeAction, startHide } from "../dock-actions.mjs";
 
 test("Floating dock: preserve layout, trusted input, drag, keyboard movement, rules and reopen", async () => {
   const instance = await isolatedBrowser();
@@ -29,6 +29,7 @@ test("Floating dock: preserve layout, trusted input, drag, keyboard movement, ru
     const dock = await openDock(context, bridge, page);
     expect(await geometry()).toEqual(before);
     await expect(dock.locator("#hide")).toBeVisible();
+    await dock.locator("#fold").click();
     const grip = dock.getByRole("button", {
       name: "Move toolbar",
       exact: true,
@@ -50,7 +51,7 @@ test("Floating dock: preserve layout, trusted input, drag, keyboard movement, ru
     await expect
       .poll(async () => (await dock.locator(".dock").boundingBox()).y)
       .toBeGreaterThan(initial.y + 80);
-    await dock.locator("#hide").click();
+    await startHide(dock);
     await expect(
       page.getByRole("region", { name: "Taylr Hide" }),
     ).toBeVisible();
@@ -79,7 +80,7 @@ test("Floating dock: preserve layout, trusted input, drag, keyboard movement, ru
       0,
     );
     await expect(dock.locator("#hide")).toBeFocused();
-    await dock.locator("#hide").click();
+    await startHide(dock);
     await page.locator("#distraction").click();
     await expect(page.locator("#distraction")).toBeHidden();
     await dock.locator("#done").click();

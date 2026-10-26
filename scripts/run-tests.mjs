@@ -11,6 +11,10 @@ if (!["local", "canary", "catalog", "compare"].includes(mode)) {
     "Usage: node scripts/run-tests.mjs local|canary|catalog|compare [Playwright options]",
   );
 }
+if (args.some((arg) => /^--retries(?:=|$)/.test(arg)))
+  throw new Error(
+    "Automatic retries can hide product failures. Run a new recorded attempt instead.",
+  );
 const id = `${new Date().toISOString().replace(/[:.]/g, "-")}-${randomBytes(3).toString("hex")}`;
 const runDirectory = join("output/playwright/runs", id);
 const canaries = [
@@ -107,12 +111,21 @@ async function preflight() {
 async function run(browserMode, cases) {
   const root = join(runDirectory, browserMode);
   await mkdir(root, { recursive: true });
+  await writeFile(
+    "output/playwright/latest-run.json",
+    JSON.stringify(
+      { id, mode, root: runDirectory, currentRoot: root },
+      null,
+      2,
+    ),
+  );
   const env = {
     TAYLR_RUN_ROOT: root,
     TAYLR_RUN_ID: id,
     TAYLR_SCOPE: mode,
     TAYLR_HEADED: browserMode === "headed" ? "1" : "0",
     TAYLR_LIVE_SITES: mode === "local" ? "0" : "1",
+    TAYLR_FIXTURE_MODE: "route",
     TAYLR_CASES: process.env.TAYLR_CASES ?? cases?.join(",") ?? "",
     TAYLR_TRACE: process.env.TAYLR_TRACE ?? "failures",
   };
@@ -163,7 +176,9 @@ async function run(browserMode, cases) {
     counts,
   };
   await writeFile(join(root, "summary.json"), JSON.stringify(summary, null, 2));
-  console.log(`Evidence: ${root}/report/index.html`);
+  console.log(
+    `Evidence: ${root}/${mode === "local" ? "report/index.html" : "catalog-report.html"}`,
+  );
   return summary;
 }
 if (await preflight()) {

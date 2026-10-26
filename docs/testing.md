@@ -1,6 +1,6 @@
 # Testing
 
-## Gates
+## Commands
 
 ```sh
 npm run check
@@ -11,7 +11,7 @@ npm run test:live -- --workers=2
 npm run test:compare -- --workers=1
 ```
 
-The wrapper builds once, checks the bundled browser and owns its fixture server. Tests launch disposable Playwright Chromium with temporary profiles; they never attach to personal browser sessions or reload an installed extension. Serialize top-level runs because they share port 5173; use workers inside one run.
+The wrapper builds once and checks the bundled browser. Local runs fulfill their fixture bytes inside each disposable browser, including query variants; public-site runs do not depend on a development server. Tests launch disposable Playwright Chromium with temporary profiles; they never attach to personal browser sessions or reload an installed extension. Keep browser concurrency bounded by measured throughput and memory pressure; more browsers can make the suite slower. Test extension copies dereference build symlinks before applying fixture-only patches, so generated production files stay unchanged.
 
 Use local acceptance for ordinary edits, canaries for cross-page changes, and the full catalog for compatibility audits. `TAYLR_HEADED=1` enables visible disposable browsers. `TAYLR_SITES`, `TAYLR_COMPONENTS` and `TAYLR_CASES` filter live checks; `TAYLR_TRACE=full` retains successful live traces.
 
@@ -21,13 +21,21 @@ Use local acceptance for ordinary edits, canaries for cross-page changes, and th
 | 2    | External access blocks left coverage incomplete                         |
 | 1    | Product, contract, environment or harness error; missing/stale evidence |
 
+These exit meanings apply to catalog contracts. Controlled acceptance reports its two opt-in diagnostics as skipped when disabled.
+
+Failures and incomplete evidence take precedence over external blocks when determining the exit code.
+
 ## Acceptance contracts
 
-Controlled fixtures cover precise selection, parent/child traversal, synthetic-input rejection, cancellation and focus, Undo ownership, cross-tab races, dynamic replacement, selector identity, startup recovery, denied access and reversible Pause/Resume. Panel cases cover drag, edge switching, unchanged page width, long rules and labels, six viewport widths, native 200% zoom, short windows, immediate keyboard feedback, dark glass and accessibility preferences.
+Controlled fixtures cover precise selection, parent/child traversal, synthetic-input rejection, disabled native controls, modal and fullscreen transitions, cancellation and focus, Undo ownership, cross-tab races, dynamic replacement, selector identity, startup recovery, denied access and reversible Pause/Resume. Panel cases cover drag, edge switching, unchanged page width, long rules and labels, six viewport widths, native 200% zoom, short windows, immediate keyboard feedback, dark glass and accessibility preferences.
+
+Journey acceptance covers the initial choice and focus, picking without mutation, Save/Done feedback, saved edits and direct Resume. Editor acceptance covers UIArc select keyboard/focus/typeahead/contrast, color hue precision and popover dismissal, disclosure drafts, and every exposed CSS control and leaf text, per-field Reset, Cancel, failed Save/retry, concurrent property merges, revision-safe Undo, site replacement, retained nested controls, text-node identity and bounded observer contention. The narrow editor keeps Save and the panel’s Close button reachable while properties scroll; collapsed invalid fields offer a direct, focused recovery action. Public contracts exercise all 21 common/advanced properties on each actual component, plus row/column gaps where its existing layout supports them. They also cover eligible text, attempted Save with invalid CSS, Reset/Cancel, hierarchy, color/listbox keyboard behavior, repeat Save/Undo, integrated Hide and cross-tab Pause/Restore. Per-component editor evidence records property and text applicability, saved overrides and verified unchanged baseline values; CSS layout constraints may limit a declaration’s visible effect.
 
 Preview acceptance checks actual pixels, native detail, clipping, geometry invalidation, hostile image CSP, inactive documents, delayed/failed captures, cancellation, storage pressure and paused animation frames. Image presence alone is insufficient.
 
-Each live component requires H01 baseline/uniqueness, H02 precise Hide without navigation, H03 Undo, H04 an attached-but-hidden target after reload/new-tab, H05 Restore across tabs, and H06 Escape. Independent retained content and application state must survive. Readiness polls observable app state; immediate Hide/Undo checks remain strict. Reacquire only the declared component after a proved pointer miss or disconnected node.
+Each live component requires H01 baseline/uniqueness, H02 live Edit and Save followed by precise Hide without navigation, H03 Hide Undo with saved edits intact, H04 Edit/Hide persistence after reload/new-tab, H05 Restore of styles and visibility across tabs, and H06 Escape. Independent retained content and application state must survive. Each visit shares one 60-second navigation and native-initialization budget; declared components and editor actions retain 15-second gates. An application readiness marker must positively identify its initialized root. Reacquire only the declared component after a proved pointer miss or disconnected node. A committed Save is verified through exact storage and rendered CSS. Unsaved input may be entered once more only after disconnection, cleared selection and unchanged stored rules; Save is never replayed.
+
+Native focus and layout can change while using the panel. Reset/Cancel must remove draft declarations; retained content must stay visible and match no injected rule. Saved values remain strict. Restore compares all properties with each document’s paused state, accepting changed native inline geometry only when its new absolute pixel declaration independently determines the expected value. Negative controls reject leaked selectors and retained overrides.
 
 The production-permission fixture retains HTTP/HTTPS grants and rejects runtime permission requests. The test action bridge invokes the real handler but does not establish Chrome’s native activeTab gesture. Native permission-dialog automation remains an opt-in unresolved diagnostic; LeetCode access smoke is also opt-in and does not prove challenge-protected component coverage.
 
@@ -35,14 +43,14 @@ The production-permission fixture retains HTTP/HTTPS grants and rejects runtime 
 
 Each invocation writes `output/playwright/runs/<id>/<headless|headed>/`. `output/playwright/latest-run.json` points to the latest invocation. Open `report/index.html` for local results or `catalog-report.html` / `catalog-results.json` for live contracts. Controlled tests retain traces/screenshots; live cases retain checkpoints and rendered evidence, with failure traces by default.
 
-Build, harness, component and environment fingerprints qualify evidence. Old results are historical after relevant changes. A canary does not verify the remaining catalog. Reports distinguish passed, externally blocked, product-failed, contract-failed, environment-error, harness-error, unrun and stale. Authentication, challenges, paywalls and browser protections are never bypassed.
+Build, harness, component and environment fingerprints qualify evidence. Old results are historical after relevant changes. A canary does not verify the remaining catalog. A selected identity missing or duplicated after revisiting remains an unverified contract failure; a present target with lost styles or visibility remains a product failure. Reports distinguish passed, externally blocked, product-failed, contract-failed, environment-error, harness-error, unrun and stale. Modal authentication walls (including those appearing after readiness), challenges, paywalls and browser protections are never bypassed.
 
-Compatible targeted reruns can supplement a full audit:
+Use explicit `TAYLR_CASES` lists for disjoint batches. After an interruption, resume unfinished contracts; preserve completed failures and external blocks. Keep the build and harness frozen throughout those batches. Compatible targeted reruns can supplement an audit, but changed fingerprints make earlier evidence historical. Aggregate the roots and require every contract to be current and attempted:
 
 ```sh
 node scripts/report-sites.mjs --roots output/playwright/runs/<full>/headless output/playwright/runs/<targeted>/headless --output output/playwright/reports/<combined>
 ```
 
-Aggregation retains original artifacts and rejected history. The newest qualifying attempt wins, including failures and blocks. Mixed environments/display modes, malformed records and incomplete checkpoint passes fail explicitly. Phase times overlap across workers; they are not wall time.
+Aggregation retains original artifacts and rejected history. The newest attempt with current fingerprints wins, including failures and blocks. Mixed environments/display modes, malformed records and incomplete checkpoint passes fail explicitly. A pass also requires its complete editor artifact, matching final checkpoint outcome and rendered Hide evidence. Automatic Playwright retries are rejected; a rerun creates a separate recorded attempt. Phase times overlap across workers; they are not wall time.
 
 Harness regressions cover occupied-server ownership, missing-browser preflight, failure classification, cleanup/attachment failures, screenshot coordinates after scrolling, unfinished fonts, app hydration, contaminated pointer input and report provenance. Details of the strategy are in [the rationale](research/testing-strategy.md); public contracts and coverage are in [the matrix](site-test-matrix.md).
