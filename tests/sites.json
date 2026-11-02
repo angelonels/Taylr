@@ -2,9 +2,9 @@
   {
     "id": "youtube",
     "name": "YouTube",
-    "category": "Video search · repeated web-component cards",
+    "category": "Video search \u00b7 repeated web-component cards",
     "url": "https://www.youtube.com/results?search_query=web+development",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Hide exactly one nested video card without opening or playing it; retain neighboring results.",
     "components": [
       {
@@ -33,15 +33,23 @@
         "target": "yt-chip-cloud-renderer.style-scope.ytd-search-header-renderer",
         "keep": "ytd-video-renderer",
         "purpose": "Exercise search filter strip selection and restoration separately from video result card."
+      },
+      {
+        "id": "guide",
+        "component": "Guide navigation",
+        "target": "#guide",
+        "keep": "ytd-video-renderer",
+        "purpose": "Hide the persistent guide rail without opening a result or changing the search.",
+        "keepIndex": 0
       }
     ]
   },
   {
     "id": "lichess",
     "name": "Lichess",
-    "category": "Interactive board · custom elements / SVG",
+    "category": "Interactive board \u00b7 custom elements / SVG",
     "url": "https://lichess.org/analysis",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Exercise a live chessboard and analysis workspace without making a move or signing in.",
     "components": [
       {
@@ -64,15 +72,22 @@
         "target": ".analyse__tools",
         "keep": "cg-board",
         "purpose": "Hide the engine and notation pane while preserving the board."
+      },
+      {
+        "id": "variants",
+        "component": "Board variant controls",
+        "target": "aside.analyse__side",
+        "keep": "cg-board",
+        "purpose": "Target the independent variant and position controls without changing the chess position."
       }
     ]
   },
   {
     "id": "steam",
     "name": "Steam",
-    "category": "Game storefront · nested links / dropdown controls",
+    "category": "Game storefront \u00b7 nested links / dropdown controls",
     "url": "https://store.steampowered.com/search/?filter=topsellers",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Use real store results without signing in, installing, purchasing, or changing account settings.",
     "components": [
       {
@@ -97,6 +112,14 @@
         "target": "#sort_by_trigger",
         "keep": ".search_result_row",
         "purpose": "Hide a scripted combobox without opening its menu or changing sort order."
+      },
+      {
+        "id": "refinements",
+        "component": "Search refinements",
+        "target": "#additional_search_options",
+        "keep": ".search_result_row",
+        "purpose": "Target the independent refinement pane without changing a price, tag or results order.",
+        "keepIndex": 1
       }
     ],
     "invariant": {
@@ -107,9 +130,9 @@
   {
     "id": "instagram",
     "name": "Instagram",
-    "category": "Image feed · React / responsive overlays",
+    "category": "Image feed \u00b7 React / responsive overlays",
     "url": "https://www.instagram.com/instagram/",
-    "status": "verified: 3/3 component contracts",
+    "status": "partial: 3/4 verified; 1/4 externally blocked (2026-10-26; build 6407d5a07340)",
     "notes": "Select one image tile without opening the post; preserve profile context. No sign-in.",
     "components": [
       {
@@ -133,6 +156,13 @@
         "target": "footer",
         "keep": "main",
         "purpose": "Exercise footer links selection and restoration separately from profile grid tile."
+      },
+      {
+        "id": "recommendations",
+        "component": "Recommendations heading",
+        "target": "main :text-is(\"Accounts you might like\")",
+        "keep": "footer",
+        "purpose": "Exercise the recommendation heading as an independent text leaf without following or opening a suggested account."
       }
     ],
     "dismiss": "[role=\"dialog\"] svg[aria-label=\"Close\"]"
@@ -140,9 +170,9 @@
   {
     "id": "excalidraw",
     "name": "Excalidraw",
-    "category": "Canvas editor · React / SVG tool controls",
+    "category": "Canvas editor \u00b7 React / SVG tool controls",
     "url": "https://excalidraw.com/",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Tests real editor chrome and canvas ownership without sign-in; replaces a regionally inaccessible TikTok contract.",
     "components": [
       {
@@ -165,6 +195,13 @@
         "target": ".zoom-in-button",
         "keep": ".excalidraw__canvas.interactive",
         "purpose": "Hide a small nested SVG button without changing the drawing zoom."
+      },
+      {
+        "id": "menu",
+        "component": "Main menu trigger",
+        "target": "[data-testid=\"main-menu-trigger\"]",
+        "keep": ".App-toolbar",
+        "purpose": "Target the menu trigger without opening a menu or changing the drawing."
       }
     ],
     "invariant": {
@@ -174,9 +211,9 @@
   {
     "id": "pinterest",
     "name": "Pinterest",
-    "category": "Visual discovery · masonry / recycled pins",
+    "category": "Visual discovery \u00b7 masonry / recycled pins",
     "url": "https://www.pinterest.com/ideas/",
-    "status": "verified: 3/3 component contracts",
+    "status": "partial: 0/4 verified; 4/4 externally blocked (2026-10-26; build 6407d5a07340)",
     "notes": "Target one editorial board among repeated wrappers and retain its neighboring board.",
     "components": [
       {
@@ -201,15 +238,23 @@
         "target": "a[href^=\"/ideas/animals/\"]",
         "keep": "[role=\"main\"]",
         "purpose": "Hide a public Ideas category link without opening its feed; retain the editorial content."
+      },
+      {
+        "id": "search",
+        "component": "Ideas search field",
+        "target": "[data-test-id=\"search-box-input\"]",
+        "keep": "[data-test-id=\"ideas-root-board\"]",
+        "purpose": "Hide the ideas search field without submitting a query or opening a board.",
+        "keepIndex": 1
       }
     ]
   },
   {
     "id": "twitch",
     "name": "Twitch",
-    "category": "Live video · React application shell",
+    "category": "Live video \u00b7 React application shell",
     "url": "https://www.twitch.tv/directory",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Persistent SPA side navigation; preserve the directory and avoid stream playback.",
     "components": [
       {
@@ -233,15 +278,22 @@
         "target": ".top-nav",
         "keep": "main",
         "purpose": "Exercise global app navigation selection and restoration separately from collapsible channel sidebar."
+      },
+      {
+        "id": "search",
+        "component": "Directory search input",
+        "target": "input[aria-label=\"Search Input\"]",
+        "keep": "main",
+        "purpose": "Target the live search field without typing a query or opening a channel."
       }
     ]
   },
   {
     "id": "spotify",
     "name": "Spotify",
-    "category": "Music · React / nested interactive controls",
+    "category": "Music \u00b7 React / nested interactive controls",
     "url": "https://open.spotify.com/artist/4gzpq5DPGxSnKTe4SA8HAU",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Nested play/follow controls must disappear without activating playback or following.",
     "components": [
       {
@@ -266,15 +318,23 @@
         "keep": "main",
         "purpose": "Exercise artist artwork selection and restoration separately from artist action bar.",
         "targetIndex": 0
+      },
+      {
+        "id": "search",
+        "component": "Music search input",
+        "target": "[data-testid=\"search-input\"]",
+        "keep": "nav[aria-label=\"Main\"]",
+        "purpose": "Target the application search field without searching or starting playback."
       }
-    ]
+    ],
+    "dismiss": "#onetrust-banner-sdk button.onetrust-close-btn-handler[aria-label=\"Close\"]"
   },
   {
     "id": "amazon",
     "name": "Amazon India",
-    "category": "Commerce · repeated product grids",
+    "category": "Commerce \u00b7 repeated product grids",
     "url": "https://www.amazon.in/s?k=notebook",
-    "status": "verified: 3/3 component contracts",
+    "status": "partial: 0/4 verified; 4/4 externally blocked (2026-10-26; build 6407d5a07340)",
     "notes": "Repeated attribute-heavy cards; hide one product while retaining another.",
     "components": [
       {
@@ -304,15 +364,23 @@
         "target": "#s-refinements",
         "keep": "[data-component-type=\"s-search-result\"]",
         "purpose": "Exercise filter refinement pane selection and restoration separately from product result."
+      },
+      {
+        "id": "footer",
+        "component": "Store footer",
+        "target": "#navFooter",
+        "keep": "[data-component-type=\"s-search-result\"]",
+        "purpose": "Target the independent storefront footer without opening account links or returning to the top.",
+        "keepIndex": 1
       }
     ]
   },
   {
     "id": "flipkart",
     "name": "Flipkart",
-    "category": "Commerce · responsive product catalog",
+    "category": "Commerce \u00b7 responsive product catalog",
     "url": "https://www.flipkart.com/search?q=notebook",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Clickable card links must hide without navigating or touching cart/account controls.",
     "components": [
       {
@@ -337,15 +405,23 @@
         "target": "footer",
         "keep": "a[href*=\"/p/\"]",
         "purpose": "Exercise store footer selection and restoration separately from product link tile."
+      },
+      {
+        "id": "pagination",
+        "component": "Result pagination",
+        "target": "nav:has-text(\"NEXT\")",
+        "keep": "a[href*=\"/p/\"]",
+        "purpose": "Target result pagination without changing page, opening a product or touching the cart.",
+        "keepIndex": 1
       }
     ]
   },
   {
     "id": "ikea",
     "name": "IKEA",
-    "category": "Responsive commerce · product cards / sticky filters",
+    "category": "Responsive commerce \u00b7 product cards / sticky filters",
     "url": "https://www.ikea.com/in/en/cat/desks-computer-desks-20649/",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Nested product links, shopping controls and responsive filters must stay independent.",
     "components": [
       {
@@ -370,6 +446,13 @@
         "target": "[data-testid=\"plp-filter-side-bar\"]",
         "keep": ".plp-product-list",
         "purpose": "Remove filters while retaining the product grid."
+      },
+      {
+        "id": "breadcrumb",
+        "component": "Breadcrumb trail",
+        "target": "nav[aria-label=\"Breadcrumbs\"]",
+        "keep": "h1",
+        "purpose": "Hide the category breadcrumb without opening a product or changing filters."
       }
     ],
     "dismiss": "#onetrust-reject-all-handler"
@@ -377,9 +460,9 @@
   {
     "id": "applemusic",
     "name": "Apple Music",
-    "category": "Media SPA · Svelte / floating playback controls",
+    "category": "Media SPA \u00b7 Svelte / floating playback controls",
     "url": "https://music.apple.com/us/new",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Public media discovery with responsive shelves; no playback, subscription or sign-in.",
     "components": [
       {
@@ -403,15 +486,22 @@
         "target": "[data-testid=\"player-bar\"]",
         "keep": "main",
         "purpose": "Hide floating media controls without starting playback."
+      },
+      {
+        "id": "logo",
+        "component": "App identity link",
+        "target": "[data-testid=\"logo\"]",
+        "keep": "main",
+        "purpose": "Target the app identity link without navigating or starting playback."
       }
     ]
   },
   {
     "id": "airbnb",
     "name": "Airbnb",
-    "category": "Travel · React search / lazy listing cards",
+    "category": "Travel \u00b7 React search / lazy listing cards",
     "url": "https://www.airbnb.co.in/s/London--United-Kingdom/homes?locale=en",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Lazy cards with nested carousel controls; hide one stay without changing search.",
     "components": [
       {
@@ -440,6 +530,13 @@
         "target": "button[aria-label=\"Filters\"]:enabled",
         "keep": "main",
         "purpose": "Wait for the filters trigger to enable after hydration; hide it without opening the search filter dialog."
+      },
+      {
+        "id": "map",
+        "component": "Stay map",
+        "target": "[data-testid=\"map/GoogleMap\"]",
+        "keep": "button[aria-label=\"Filters\"]",
+        "purpose": "Target the map and its gesture surface without panning, opening a listing or changing the search."
       }
     ],
     "dismiss": "button:has-text(\"Got it\")"
@@ -447,9 +544,9 @@
   {
     "id": "booking",
     "name": "Booking.com",
-    "category": "Travel · responsive hotel search",
+    "category": "Travel \u00b7 responsive hotel search",
     "url": "https://www.booking.com/city/gb/london.html",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Repeated offer layouts and nested booking links; no reservation actions.",
     "components": [
       {
@@ -475,15 +572,22 @@
         "keep": "main",
         "purpose": "Exercise primary navigation selection and restoration separately from hotel card.",
         "targetIndex": 0
+      },
+      {
+        "id": "footer",
+        "component": "Site footer",
+        "target": "footer[data-testid=\"full-footer\"]",
+        "keep": "[data-testid=\"card\"]",
+        "purpose": "Target the responsive localized footer without following a destination link or reserving a stay."
       }
     ]
   },
   {
     "id": "tripadvisor",
     "name": "Tripadvisor",
-    "category": "Travel discovery · lazy recommendation carousels",
+    "category": "Travel discovery \u00b7 lazy recommendation carousels",
     "url": "https://www.tripadvisor.com/Tourism-g186338-London_England-Vacations.html",
-    "status": "verified: 0/3 component contracts; blocked: 3/3",
+    "status": "partial: 0/3 verified; 3/3 externally blocked (2026-10-26; build 6407d5a07340)",
     "notes": "Carousel/section nesting and late content insertion; no reviews or booking.",
     "components": [
       {
@@ -515,9 +619,9 @@
   {
     "id": "google",
     "name": "Google Search",
-    "category": "Search · asynchronously composed results",
+    "category": "Search \u00b7 asynchronously composed results",
     "url": "https://www.google.com/search?q=web+standards",
-    "status": "verified: 0/3 component contracts; blocked: 3/3",
+    "status": "partial: 0/3 verified; 3/3 externally blocked (2026-10-26; build 6407d5a07340)",
     "notes": "Hide one result block without navigating; preserve the containing results region.",
     "components": [
       {
@@ -547,9 +651,9 @@
   {
     "id": "googlemaps",
     "name": "Google Maps",
-    "category": "Maps · canvas / floating controls",
+    "category": "Maps \u00b7 canvas / floating controls",
     "url": "https://www.google.com/maps?hl=en&q=London",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Hide a floating action without triggering route planning; retain the rendered map.",
     "components": [
       {
@@ -574,6 +678,13 @@
         "keep": "[role=\"application\"]",
         "purpose": "Exercise place information panel selection and restoration separately from map zoom control.",
         "targetIndex": 0
+      },
+      {
+        "id": "menu",
+        "component": "Map menu trigger",
+        "target": "button[aria-label=\"Menu\"]",
+        "keep": "[role=\"application\"]",
+        "purpose": "Target the main menu trigger without opening navigation or moving the map."
       }
     ],
     "readyUrl": "/maps/place/"
@@ -581,9 +692,9 @@
   {
     "id": "googlenews",
     "name": "Google News",
-    "category": "News aggregation · custom elements / card streams",
+    "category": "News aggregation \u00b7 custom elements / card streams",
     "url": "https://news.google.com/home?hl=en-IN&gl=IN&ceid=IN%3Aen",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Repeated nested stories and late image loading; retain adjacent articles.",
     "components": [
       {
@@ -609,15 +720,23 @@
         "target": "header",
         "keep": "main",
         "purpose": "Exercise app header selection and restoration separately from news card."
+      },
+      {
+        "id": "weather",
+        "component": "Weather forecast trigger",
+        "target": "button[aria-label=\"Expand to view forecast\"]",
+        "keep": "main .IBr9hb",
+        "purpose": "Target the forecast disclosure without expanding it or navigating away from the news feed.",
+        "keepIndex": 1
       }
     ]
   },
   {
     "id": "github",
     "name": "GitHub",
-    "category": "Code hosting · progressive React file browser",
+    "category": "Code hosting \u00b7 progressive React file browser",
     "url": "https://github.com/microsoft/vscode",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Dense table-row selection without opening a file; preserve adjacent rows.",
     "components": [
       {
@@ -642,15 +761,23 @@
         "target": "nav[aria-label=\"Repository\"]",
         "keep": "main",
         "purpose": "Exercise repository navigation selection and restoration separately from repository file row."
+      },
+      {
+        "id": "globalheader",
+        "component": "Global site header",
+        "target": "header[role=\"banner\"]",
+        "keep": "tr.react-directory-row",
+        "purpose": "Target global navigation separately from repository navigation without opening a menu or file.",
+        "keepIndex": 1
       }
     ]
   },
   {
     "id": "gitlab",
     "name": "GitLab",
-    "category": "Code collaboration · Vue application shell",
+    "category": "Code collaboration \u00b7 Vue application shell",
     "url": "https://gitlab.com/gitlab-org/gitlab",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Sticky app navigation with nested expandable items; preserve repository content.",
     "components": [
       {
@@ -674,15 +801,22 @@
         "keep": "main",
         "purpose": "Exercise branch selector selection and restoration separately from project navigation.",
         "targetIndex": 0
+      },
+      {
+        "id": "files",
+        "component": "Repository file table",
+        "target": "[data-testid=\"file-tree-table\"]",
+        "keep": ".readme-holder",
+        "purpose": "Target the complete file table separately from the branch picker without opening a file."
       }
     ]
   },
   {
     "id": "notion",
     "name": "Notion",
-    "category": "Productivity · template gallery / client navigation",
+    "category": "Productivity \u00b7 template gallery / client navigation",
     "url": "https://www.notion.com/templates",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Gallery-link targeting without route navigation; nested labels and images.",
     "components": [
       {
@@ -707,15 +841,22 @@
         "keep": "main",
         "purpose": "Exercise template filter sidebar selection and restoration separately from template tile.",
         "targetIndex": 0
+      },
+      {
+        "id": "search",
+        "component": "Template gallery search",
+        "target": "input[aria-label=\"Search template gallery\"]",
+        "keep": "nav[aria-label=\"Main\"]",
+        "purpose": "Hide the gallery search field without opening a template or submitting a query."
       }
     ]
   },
   {
     "id": "desmos",
     "name": "Desmos",
-    "category": "Graphing workspace · canvas / mathematical controls",
+    "category": "Graphing workspace \u00b7 canvas / mathematical controls",
     "url": "https://www.desmos.com/calculator",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Exercise a working canvas application rather than a static template gallery. No saved graph or account changes.",
     "components": [
       {
@@ -738,15 +879,22 @@
         "target": ".dcg-action-zoomin",
         "keep": ".dcg-grapher",
         "purpose": "Hide a graph control without changing the graph bounds."
+      },
+      {
+        "id": "expressions",
+        "component": "Expression list",
+        "target": "[aria-label=\"Expression List\"]",
+        "keep": ".dcg-grapher",
+        "purpose": "Target the editable expression list without entering an expression or changing the graph."
       }
     ]
   },
   {
     "id": "canva",
     "name": "Canva",
-    "category": "Design · responsive template discovery",
+    "category": "Design \u00b7 responsive template discovery",
     "url": "https://www.canva.com/templates/",
-    "status": "verified: 0/3 component contracts; blocked: 3/3",
+    "status": "partial: 0/3 verified; 3/3 externally blocked (2026-10-26; build 6407d5a07340)",
     "notes": "Nested template preview/link hit areas; no editor, sign-in, or account actions.",
     "components": [
       {
@@ -783,9 +931,9 @@
   {
     "id": "medium",
     "name": "Medium",
-    "category": "Publishing · client-rendered article feeds",
+    "category": "Publishing \u00b7 client-rendered article feeds",
     "url": "https://medium.com/tag/technology",
-    "status": "verified: 0/3 component contracts; blocked: 3/3",
+    "status": "partial: 0/3 verified; 3/3 externally blocked (2026-10-26; build 6407d5a07340)",
     "notes": "Repeated nested typography and follow links; preserve neighboring articles.",
     "components": [
       {
@@ -818,9 +966,9 @@
   {
     "id": "substack",
     "name": "Substack",
-    "category": "Publishing · dynamic recommendation feed",
+    "category": "Publishing \u00b7 dynamic recommendation feed",
     "url": "https://substack.com/browse/technology",
-    "status": "verified: 1/3 component contracts; blocked: 2/3",
+    "status": "partial: 2/4 verified; 2/4 externally blocked (2026-10-26; build 6407d5a07340)",
     "notes": "Repeated feed previews and subscription controls; no subscription or login.",
     "components": [
       {
@@ -846,15 +994,22 @@
         "keep": "main",
         "purpose": "Hide the horizontal category tab strip without changing the active feed.",
         "targetIndex": 0
+      },
+      {
+        "id": "search",
+        "component": "Global publication search",
+        "target": "input[aria-label=\"Global search\"]",
+        "keep": "[role=\"tablist\"][aria-label=\"Categories\"]",
+        "purpose": "Target global search without typing a query, changing category or subscribing."
       }
     ]
   },
   {
     "id": "bbc",
     "name": "BBC News",
-    "category": "News · responsive editorial grid",
+    "category": "News \u00b7 responsive editorial grid",
     "url": "https://www.bbc.com/news",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Nested image/caption selection and editorial reflow; preserve article content.",
     "components": [
       {
@@ -880,15 +1035,23 @@
         "keep": "main",
         "purpose": "Exercise section heading selection and restoration separately from lead image figure.",
         "targetIndex": 0
+      },
+      {
+        "id": "navigation",
+        "component": "Section navigation",
+        "target": "[data-testid=\"level1-navigation-container\"]",
+        "keep": "[data-testid=\"london-card\"]",
+        "purpose": "Hide the section navigation bar without opening a story.",
+        "keepIndex": 0
       }
     ]
   },
   {
     "id": "cnn",
     "name": "CNN",
-    "category": "News · media-rich live editorial layout",
+    "category": "News \u00b7 media-rich live editorial layout",
     "url": "https://www.cnn.com/",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Composite story modules and lazy media; no autoplay or navigation.",
     "components": [
       {
@@ -914,6 +1077,13 @@
         "keep": "[role=\"main\"]",
         "purpose": "Exercise masthead selection and restoration separately from editorial story module.",
         "targetIndex": 0
+      },
+      {
+        "id": "footer",
+        "component": "Page footer",
+        "target": "footer",
+        "keep": "[role=\"main\"]",
+        "purpose": "Target the footer navigation surface without following a story, subscription or account link."
       }
     ],
     "origins": ["https://edition.cnn.com", "https://www.cnn.com"]
@@ -921,9 +1091,9 @@
   {
     "id": "translate",
     "name": "Google Translate",
-    "category": "Text editor · reactive input / audio controls",
+    "category": "Text editor \u00b7 reactive input / audio controls",
     "url": "https://translate.google.com/?sl=en&tl=es&text=Hello&op=translate",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "A fixed public sample exercises input and command controls without personal text, clipboard access, account activity or audio playback.",
     "components": [
       {
@@ -946,6 +1116,13 @@
         "target": "button[aria-label=\"Listen to source text\"]",
         "keep": "textarea[aria-label=\"Source text\"]",
         "purpose": "Hide the audio action without starting speech."
+      },
+      {
+        "id": "copy",
+        "component": "Copy translation control",
+        "target": "button[aria-label=\"Copy translation\"]",
+        "keep": "textarea[aria-label=\"Source text\"]",
+        "purpose": "Target the translated-output copy command without writing to the clipboard or changing Hello."
       }
     ],
     "invariant": {
@@ -956,9 +1133,9 @@
   {
     "id": "espn",
     "name": "ESPN",
-    "category": "Sports · live scoreboard / React widgets",
+    "category": "Sports \u00b7 live scoreboard / React widgets",
     "url": "https://www.espn.com/nba/scoreboard",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "notes": "Repeated live score components; hide one widget without activating nested links.",
     "components": [
       {
@@ -983,15 +1160,22 @@
         "keep": "main",
         "purpose": "Exercise scoreboard team logo selection and restoration separately from scoreboard widget.",
         "targetIndex": 0
+      },
+      {
+        "id": "globalnav",
+        "component": "Global sport navigation",
+        "target": "nav[aria-label=\"Global Navigation\"]",
+        "keep": ".Scoreboard",
+        "purpose": "Target global sport navigation separately from NBA navigation without changing the selected league."
       }
     ]
   },
   {
     "id": "imdb",
     "name": "IMDb",
-    "category": "Entertainment · ranked repeated list rows",
+    "category": "Entertainment \u00b7 ranked repeated list rows",
     "url": "https://www.imdb.com/chart/top/",
-    "status": "verified: 0/3 component contracts; blocked: 3/3",
+    "status": "partial: 0/3 verified; 3/3 externally blocked (2026-10-26; build 6407d5a07340)",
     "notes": "Nested poster/title/watchlist controls; hide one row without watchlist changes.",
     "components": [
       {
@@ -1023,9 +1207,9 @@
     "id": "tldraw",
     "name": "tldraw",
     "url": "https://www.tldraw.com/",
-    "category": "Whiteboard · canvas overlay / Radix controls",
+    "category": "Whiteboard \u00b7 canvas overlay / Radix controls",
     "notes": "Exercise a drawing workspace, style radiogroups and zoom without creating shapes or signing in.",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "components": [
       {
         "id": "primary",
@@ -1047,6 +1231,13 @@
         "target": "[data-testid=\"minimap.zoom-menu-button\"]",
         "keep": "[data-testid=\"canvas\"]",
         "purpose": "Hide the generated-ID zoom control without opening its menu."
+      },
+      {
+        "id": "share",
+        "component": "Share button",
+        "target": "[data-testid=\"tla-share-button\"]",
+        "keep": "[data-testid=\"canvas\"]",
+        "purpose": "Hide the anonymous share trigger without opening it or changing the canvas."
       }
     ],
     "invariant": {
@@ -1058,9 +1249,9 @@
     "id": "tradingview",
     "name": "TradingView",
     "url": "https://www.tradingview.com/chart/?symbol=NASDAQ%3AAAPL",
-    "category": "Charts · layered canvases / live data",
+    "category": "Charts \u00b7 layered canvases / live data",
     "notes": "Live financial chart layers, drawing tools and dialog triggers; no trading, alerts or account actions.",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "components": [
       {
         "id": "primary",
@@ -1082,6 +1273,13 @@
         "target": "[data-is-fake-main-panel=\"false\"] button[data-name=\"open-indicators-dialog\"]",
         "keep": "[aria-label=\"Chart #1\"]",
         "purpose": "Hide a nested SVG dialog trigger without opening indicators."
+      },
+      {
+        "id": "intervals",
+        "component": "Chart interval control",
+        "target": "#header-toolbar-intervals",
+        "keep": "[aria-label=\"Chart #1\"]",
+        "purpose": "Target the interval control without opening its menu or changing the live chart timeframe."
       }
     ],
     "invariant": {
@@ -1093,9 +1291,9 @@
     "id": "googleflights",
     "name": "Google Flights",
     "url": "https://www.google.com/travel/flights?hl=en",
-    "category": "Travel search · comboboxes / date widgets / accordion",
+    "category": "Travel search \u00b7 comboboxes / date widgets / accordion",
     "notes": "Form controls must hide without opening airport suggestions, calendars or disclosure panels.",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "components": [
       {
         "id": "primary",
@@ -1118,6 +1316,13 @@
         "target": "button[aria-label=\"How can I find cheap flights to anywhere?\"]",
         "keep": "[role=\"main\"]",
         "purpose": "Hide an accordion trigger while its answer remains collapsed."
+      },
+      {
+        "id": "destination",
+        "component": "Destination combobox",
+        "target": "input[aria-label=\"Where to? \"]",
+        "keep": "input[aria-label=\"Where from?\"]",
+        "purpose": "Target the empty destination input without opening suggestions or changing the departure city."
       }
     ],
     "invariant": {
@@ -1129,9 +1334,9 @@
     "id": "huggingface",
     "name": "Hugging Face",
     "url": "https://huggingface.co/models",
-    "category": "AI model hub · Svelte catalog / client filters",
+    "category": "AI model hub \u00b7 Svelte catalog / client filters",
     "notes": "Repeated repository cards, text filtering and sort menus without navigation or downloads.",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "components": [
       {
         "id": "primary",
@@ -1159,6 +1364,13 @@
         "target": "button:has-text(\"Sort:\")",
         "keep": "article.overview-card-wrapper",
         "purpose": "Hide the sorting menu trigger without reordering results."
+      },
+      {
+        "id": "siteheader",
+        "component": "Hub header",
+        "target": "header:has(img[alt=\"Hugging Face's logo\"])",
+        "keep": "article.overview-card-wrapper",
+        "purpose": "Target the global hub header without searching, sorting or downloading a model."
       }
     ],
     "invariant": {
@@ -1170,9 +1382,9 @@
     "id": "applemaps",
     "name": "Apple Maps",
     "url": "https://maps.apple.com/frame?center=51.5074%2C-0.1278&span=0.1%2C0.1",
-    "category": "Maps · full-window WebGL canvas / floating navigation",
+    "category": "Maps \u00b7 full-window WebGL canvas / floating navigation",
     "notes": "Exercise a full-viewport map beneath an independently positioned navigation surface.",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "components": [
       {
         "id": "primary",
@@ -1194,16 +1406,24 @@
         "target": "a[aria-label=\"Search\"]",
         "keep": "#shell-map",
         "purpose": "Hide a route-changing search control without navigating."
+      },
+      {
+        "id": "zoom",
+        "component": "Map zoom trigger",
+        "target": "button[aria-label=\"Zoom In\"]",
+        "keep": "#shell-nav",
+        "purpose": "Target the map zoom command without changing the viewport or navigating."
       }
-    ]
+    ],
+    "readyUrl": "center=51.507400"
   },
   {
     "id": "scratch",
     "name": "Scratch",
     "url": "https://scratch.mit.edu/projects/editor/",
-    "category": "Creative coding · Blockly SVG / stage canvas / React panes",
+    "category": "Creative coding \u00b7 Blockly SVG / stage canvas / React panes",
     "notes": "Exercise the anonymous editor without running blocks, importing assets or saving a project.",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "components": [
       {
         "id": "primary",
@@ -1225,6 +1445,13 @@
         "target": "[role=\"region\"][aria-label=\"Target pane\"]",
         "keep": "[aria-label=\"Stage\"]",
         "purpose": "Hide sprite management without changing or deleting the default sprite."
+      },
+      {
+        "id": "menu",
+        "component": "Editor menu bar",
+        "target": "header[aria-label=\"Menu topbar\"]",
+        "keep": "section[aria-label=\"Stage\"] canvas:not([class])",
+        "purpose": "Hide the editor menu bar without running the project or renaming the sprite."
       }
     ],
     "invariant": {
@@ -1237,9 +1464,9 @@
     "id": "geogebra",
     "name": "GeoGebra",
     "url": "https://www.geogebra.org/graphing",
-    "category": "Math workspace · GWT / canvas / virtual keyboard",
+    "category": "Math workspace \u00b7 GWT / canvas / virtual keyboard",
     "notes": "Exercise graphics, algebra and keyboard layers without entering a mathematical expression.",
-    "status": "verified: 3/3 component contracts",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
     "components": [
       {
         "id": "primary",
@@ -1261,11 +1488,415 @@
         "target": "#ggbApplet .TabbedKeyBoard",
         "keep": "#ggbApplet canvas[data-test=\"euclidianView\"]",
         "purpose": "Hide the math keyboard without entering symbols."
+      },
+      {
+        "id": "toolbar",
+        "component": "Construction toolbar",
+        "target": "#ggbApplet .toolbar",
+        "keep": "#ggbApplet canvas[data-test=\"euclidianView\"]",
+        "purpose": "Target construction commands without choosing a tool or creating an object."
       }
     ],
     "invariant": {
       "selector": "button[data-test=\"mainMenu\"]",
       "attribute": "aria-expanded"
-    }
+    },
+    "readySelector": "#ggbApplet"
+  },
+  {
+    "id": "mdn",
+    "name": "MDN Web Docs",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS",
+    "category": "Documentation \u00b7 header, section sidebar, on-page contents, title",
+    "notes": "Public CSS reference. Header, left section sidebar, right contents, and article title are separate visible nodes.",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
+    "components": [
+      {
+        "id": "header",
+        "component": "Docs header",
+        "target": "header.page-layout__header",
+        "keep": "h1",
+        "purpose": "Hide the documentation section header without leaving the CSS reference."
+      },
+      {
+        "id": "sidebar",
+        "component": "CSS section sidebar",
+        "target": "#main-sidebar",
+        "keep": "h1",
+        "purpose": "Hide the CSS section index without hiding the article title."
+      },
+      {
+        "id": "toc",
+        "component": "On-page contents",
+        "target": "aside.reference-layout__toc",
+        "keep": "h1",
+        "purpose": "Hide the in-page contents list without hiding the article title."
+      },
+      {
+        "id": "title",
+        "component": "Article title",
+        "target": "h1",
+        "keep": "#main-sidebar",
+        "purpose": "Hide the article title while retaining the section sidebar."
+      }
+    ]
+  },
+  {
+    "id": "wikipedia",
+    "name": "Wikipedia",
+    "url": "https://en.wikipedia.org/wiki/Web_browser",
+    "category": "Encyclopedia \u00b7 search, contents, namespace tabs, title",
+    "notes": "Public article. Search field, contents panel, Article/Talk tabs, and title are separate visible nodes. No infobox was present.",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
+    "components": [
+      {
+        "id": "search",
+        "component": "Article search",
+        "target": "#searchInput",
+        "keep": "#firstHeading",
+        "purpose": "Hide the Wikipedia search field without submitting a query."
+      },
+      {
+        "id": "toc",
+        "component": "Contents panel",
+        "target": "#mw-panel-toc",
+        "keep": "#firstHeading",
+        "purpose": "Hide the contents panel while retaining the article title."
+      },
+      {
+        "id": "namespaces",
+        "component": "Article namespace tabs",
+        "target": "nav[aria-label=\"Namespaces\"]",
+        "keep": "#searchInput",
+        "purpose": "Hide the Article and Talk tabs without using account links or submitting search."
+      },
+      {
+        "id": "title",
+        "component": "Article title",
+        "target": "#firstHeading",
+        "keep": "#mw-panel-toc",
+        "purpose": "Hide the article heading while retaining the contents panel."
+      }
+    ]
+  },
+  {
+    "id": "openstreetmap",
+    "name": "OpenStreetMap",
+    "url": "https://www.openstreetmap.org/#map=12/51.5074/-0.1278",
+    "category": "Map workspace \u00b7 Leaflet tiles / floating controls / native input",
+    "notes": "Exercise map gestures, query input, zoom and global navigation without panning, searching or editing the map.",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
+    "components": [
+      {
+        "id": "primary",
+        "component": "Map viewport",
+        "target": "#map",
+        "keep": "nav[aria-label=\"Main navigation\"]",
+        "purpose": "Target the tile and gesture surface while retaining independent navigation."
+      },
+      {
+        "id": "search",
+        "component": "Map query input",
+        "target": "#sidebar input[name=\"query\"]",
+        "keep": "#map",
+        "purpose": "Target the search input without submitting a query or replacing the map."
+      },
+      {
+        "id": "zoom",
+        "component": "Map zoom control",
+        "target": "a[aria-label=\"Zoom In\"]",
+        "keep": "#sidebar",
+        "purpose": "Target a floating zoom control without changing the zoom level."
+      },
+      {
+        "id": "navigation",
+        "component": "Global navigation",
+        "target": "nav[aria-label=\"Main navigation\"]",
+        "keep": "#map",
+        "purpose": "Target global map navigation without opening an account or edit action."
+      }
+    ]
+  },
+  {
+    "id": "stackoverflow",
+    "name": "Stack Overflow",
+    "url": "https://stackoverflow.com/questions/tagged/javascript",
+    "category": "Question catalog \u00b7 sticky navigation / search / sidebar",
+    "notes": "Actual question-page DOM was observed with HTTP403; keep planned and let acceptance classify access. No votes, posts or account actions.",
+    "status": "partial: 0/4 verified; 4/4 externally blocked (2026-10-26; build 6407d5a07340)",
+    "components": [
+      {
+        "id": "search",
+        "component": "Question search input",
+        "target": "input[name=\"q\"]",
+        "keep": "#content",
+        "purpose": "Target search without submitting a query."
+      },
+      {
+        "id": "navigation",
+        "component": "Primary navigation",
+        "target": "nav[aria-label=\"Primary\"]",
+        "keep": "#questions",
+        "purpose": "Target the independent left navigation without changing the question feed."
+      },
+      {
+        "id": "sidebar",
+        "component": "Question sidebar",
+        "target": "#sidebar",
+        "keep": "#questions",
+        "purpose": "Target recommendations and notices while retaining the question list."
+      },
+      {
+        "id": "heading",
+        "component": "Tag heading",
+        "target": "#mainbar h1",
+        "keep": "#questions",
+        "purpose": "Target the tag heading as a text leaf while retaining the question list."
+      }
+    ]
+  },
+  {
+    "id": "w3c",
+    "name": "W3C",
+    "url": "https://www.w3.org/",
+    "category": "Standards publishing \u00b7 responsive navigation / repeated editorial cards",
+    "notes": "Exercise responsive semantic sections and repeated cards without following navigation.",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
+    "components": [
+      {
+        "id": "navigation",
+        "component": "Standards navigation",
+        "target": "nav#global-nav",
+        "keep": "footer.global-footer",
+        "purpose": "Target standards navigation without opening a disclosure or following a link."
+      },
+      {
+        "id": "hero",
+        "component": "Mission banner",
+        "target": "div.u-full-width.hero",
+        "keep": "div.card",
+        "purpose": "Target the responsive mission banner while retaining an independent news card.",
+        "keepIndex": 1
+      },
+      {
+        "id": "news",
+        "component": "News card",
+        "target": "div.card",
+        "keep": "div.card",
+        "purpose": "Target one repeated news card while retaining its neighbor.",
+        "targetIndex": 0,
+        "keepIndex": 1
+      },
+      {
+        "id": "pagefooter",
+        "component": "Global footer",
+        "target": "footer.global-footer",
+        "keep": "nav#global-nav",
+        "purpose": "Target the global footer while retaining main navigation."
+      }
+    ]
+  },
+  {
+    "id": "photopea",
+    "name": "Photopea launcher",
+    "url": "https://www.photopea.com/",
+    "category": "Editor launcher \u00b7 inline script command / responsive feature blocks",
+    "notes": "This contract covers the public launcher page, not the photo editor canvas. Picking Start using Photopea must not launch its editor or open files.",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
+    "components": [
+      {
+        "id": "navigation",
+        "component": "Launcher navigation",
+        "target": "#bar",
+        "keep": "div.pair",
+        "purpose": "Target launcher links without navigating to documentation.",
+        "keepIndex": 1
+      },
+      {
+        "id": "heading",
+        "component": "Launcher heading",
+        "target": "h1",
+        "keep": "div.pair",
+        "purpose": "Target the heading as a text leaf while retaining feature content.",
+        "keepIndex": 1
+      },
+      {
+        "id": "launch",
+        "component": "Editor launch command",
+        "target": "button:has-text(\"Start using Photopea\")",
+        "keep": "div.pair",
+        "purpose": "Target the inline-script launch command without creating an editor frame.",
+        "targetIndex": 0,
+        "keepIndex": 1
+      },
+      {
+        "id": "feature",
+        "component": "Local editing feature block",
+        "target": "div.pair",
+        "keep": "#bar",
+        "purpose": "Target the first responsive image-and-text feature block while retaining navigation.",
+        "targetIndex": 0
+      }
+    ]
+  },
+  {
+    "id": "codemirror",
+    "name": "CodeMirror",
+    "url": "https://codemirror.net/",
+    "category": "Code editor \u00b7 contenteditable / syntax spans / gutters",
+    "notes": "Exercise a live editor and its line-number gutter without typing code, plus independent navigation and feature text.",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
+    "components": [
+      {
+        "id": "primary",
+        "component": "Live code editor",
+        "target": ".cm-editor",
+        "keep": "h1",
+        "purpose": "Edit and hide the complete contenteditable code editor without typing or executing code."
+      },
+      {
+        "id": "gutter",
+        "component": "Line number gutter",
+        "target": ".cm-gutters",
+        "keep": "h1",
+        "purpose": "Target a narrow nested editor gutter without selecting or folding code."
+      },
+      {
+        "id": "navigation",
+        "component": "Header navigation",
+        "target": "header nav",
+        "keep": ".cm-editor",
+        "purpose": "Target the navigation strip without following a documentation link."
+      },
+      {
+        "id": "features",
+        "component": "Features heading",
+        "target": "h2#features",
+        "keep": ".cm-editor",
+        "purpose": "Exercise direct text editing on a heading while preserving the editor and surrounding feature descriptions."
+      }
+    ]
+  },
+  {
+    "id": "radix",
+    "name": "Radix Primitives",
+    "readyState": "load",
+    "url": "https://www.radix-ui.com/primitives/docs/components/slider",
+    "category": "Component documentation \u00b7 Radix menus / tabs / code controls",
+    "notes": "Nested documentation controls must remain inactive during picking: no clipboard write, tab switch, search dialog or expanded code.",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
+    "components": [
+      {
+        "id": "primary",
+        "component": "Documentation search trigger",
+        "target": "button[aria-label=\"Search. Press Slash key to search quickly.\"]",
+        "keep": "h1#slider",
+        "purpose": "Hide a keyboard shortcut search trigger without opening the search dialog."
+      },
+      {
+        "id": "tabs",
+        "component": "Code example tab strip",
+        "target": "[role=\"tablist\"]",
+        "keep": "h1#slider",
+        "targetIndex": 0,
+        "purpose": "Target the code example tab strip without switching source files."
+      },
+      {
+        "id": "copy",
+        "component": "Copy code control",
+        "target": "button[aria-label=\"Copy code to clipboard\"]",
+        "keep": "h1#slider",
+        "targetIndex": 0,
+        "purpose": "Target a nested icon button without invoking clipboard access."
+      },
+      {
+        "id": "expand",
+        "component": "Expand code control",
+        "target": "button:has-text(\"Expand code\")",
+        "keep": "h1#slider",
+        "targetIndex": 0,
+        "purpose": "Target a text command without expanding the code example."
+      }
+    ]
+  },
+  {
+    "id": "observable",
+    "name": "Observable Plot",
+    "url": "https://observablehq.com/plot/",
+    "category": "Visualization docs \u00b7 VitePress nav / hero / example cards",
+    "notes": "Public documentation redirects to its canonical GitHub Pages origin. Exercise search, internal documentation routing and external links without navigating or opening tabs.",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
+    "components": [
+      {
+        "id": "search",
+        "component": "Docs search button",
+        "target": "button[aria-label=\"Search\"]",
+        "keep": "a[href=\"/plot/getting-started\"]",
+        "purpose": "Hide the docs search trigger without opening search."
+      },
+      {
+        "id": "start",
+        "component": "Get started link",
+        "target": "a[href=\"/plot/getting-started\"]",
+        "keep": "button[aria-label=\"Search\"]",
+        "purpose": "Hide the hero getting-started link without navigating."
+      },
+      {
+        "id": "github",
+        "component": "GitHub repository link",
+        "target": "a[href=\"https://github.com/observablehq/plot\"]",
+        "targetIndex": 0,
+        "keep": "button[aria-label=\"Search\"]",
+        "purpose": "Hide the visible GitHub link in the top bar without leaving the docs."
+      },
+      {
+        "id": "examples",
+        "component": "Examples gallery link",
+        "target": "a[href=\"https://observablehq.com/@observablehq/plot-gallery\"]",
+        "targetIndex": 0,
+        "keep": "a[href=\"/plot/getting-started\"]",
+        "purpose": "Target the external examples-gallery command without navigating or opening a new tab."
+      }
+    ],
+    "origins": ["https://observablehq.github.io"]
+  },
+  {
+    "id": "monkeytype",
+    "name": "Monkeytype",
+    "url": "https://monkeytype.com/",
+    "category": "Typing test \u00b7 mode toolbar / word stream / header",
+    "notes": "Reject optional cookies in each disposable context, then exercise the typing toolbar, words, header and restart without entering text or starting a test.",
+    "status": "verified: 4/4 component contracts (2026-10-26; build 6407d5a07340)",
+    "components": [
+      {
+        "id": "config",
+        "component": "Test mode toolbar",
+        "target": "[data-ui-element=\"testConfig\"]",
+        "keep": "#words",
+        "purpose": "Hide punctuation, mode, and time options without changing the test or focusing the words."
+      },
+      {
+        "id": "words",
+        "component": "Word stream",
+        "target": "#words",
+        "keep": "[data-ui-element=\"header\"]",
+        "purpose": "Hide the word stream without typing and without removing the header."
+      },
+      {
+        "id": "header",
+        "component": "Site header",
+        "target": "[data-ui-element=\"header\"]",
+        "keep": "[data-ui-element=\"testConfig\"]",
+        "purpose": "Hide the logo header while the mode toolbar stays."
+      },
+      {
+        "id": "restart",
+        "component": "Restart control",
+        "target": "button[aria-label=\"Restart Test\"]",
+        "keep": "[data-ui-element=\"testConfig\"]",
+        "purpose": "Hide restart without activating it or changing the mode toolbar."
+      }
+    ],
+    "dismiss": "button:has-text(\"reject non-essential\")"
   }
 ]

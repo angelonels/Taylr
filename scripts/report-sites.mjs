@@ -1,3 +1,4 @@
+import { coreProperties } from "../tests/scenarios/editor.mjs";
 import { stripVTControlCharacters } from "node:util";
 import { resolve, relative, join, sep } from "node:path";
 import {
@@ -38,6 +39,7 @@ const latestSummary = latest ? await read(`${latest.root}/summary.json`) : null;
 const fallback =
   process.env.TAYLR_RUN_ROOT ??
   latestSummary?.summaries?.at(-1)?.root ??
+  latest?.currentRoot ??
   defaultRoot;
 const explicit = requestedRoots.length > 0;
 const roots = [
@@ -45,7 +47,7 @@ const roots = [
     (explicit ? requestedRoots : [fallback]).map((root) => resolve(root)),
   ),
 ];
-const runRoot = resolve(output ?? fallback);
+const runRoot = resolve(output ?? (explicit ? roots[0] : fallback));
 if (roots.length > 1 && (!output || roots.includes(runRoot)))
   throw new Error(
     "Merged evidence requires a separate --output directory; original reports are preserved.",
@@ -90,28 +92,35 @@ for (const site of sites)
       await Promise.all(
         sources.map(async (source) => {
           const path = `${source.root}/session-results/${site.id}--${component.id}.json`;
-          const result = explicit
-            ? await readFile(path, "utf8")
-                .then(JSON.parse)
-                .catch((error) => {
-                  if (error.code === "ENOENT") return null;
-                  throw new Error(
-                    `Malformed or unreadable candidate ${path}: ${error.message}`,
-                  );
-                })
-            : await read(path);
+          const result = await readFile(path, "utf8")
+            .then(JSON.parse)
+            .catch((error) => {
+              if (error.code === "ENOENT") return null;
+              throw new Error(
+                `Malformed or unreadable candidate ${path}: ${error.message}`,
+              );
+            });
           if (!result) return null;
           if (
-            explicit &&
-            (!outcomes.includes(result.outcome) ||
-              !Number.isFinite(Date.parse(result.completedAt)) ||
-              (result.outcome === "passed" &&
-                (!Array.isArray(result.checks) ||
-                  result.checks.length !== 6 ||
-                  result.checks.some(
-                    (check) => typeof check !== "string" || !check.trim(),
-                  ) ||
-                  new Set(result.checks).size !== 6)))
+            !outcomes.includes(result.outcome) ||
+            !Number.isFinite(Date.parse(result.completedAt)) ||
+            (result.outcome === "passed" &&
+              (!Array.isArray(result.checks) ||
+                result.checks.length !== 6 ||
+                result.checks.some(
+                  (check) => typeof check !== "string" || !check.trim(),
+                ) ||
+                new Set(result.checks).size !== 6 ||
+                [
+                  "Baseline:",
+                  "Edit:",
+                  "Undo:",
+                  "Persistence:",
+                  "Restore:",
+                  "Exit:",
+                ].some(
+                  (prefix, index) => !result.checks[index].startsWith(prefix),
+                )))
           )
             throw new Error(
               `Invalid outcome, timestamp or six-checkpoint pass in candidate ${path}.`,
@@ -128,6 +137,40 @@ for (const site of sites)
             result.browser === "disposable-playwright-chromium" &&
             result.fingerprint === fingerprint &&
             compatible;
+          if (current && result.outcome === "passed") {
+            const directory = join(source.root, "sites", site.id, component.id);
+            const editor = await read(join(directory, "editor-checks.json"));
+            const checkpoint = await read(join(directory, "checks.json"));
+            if (
+              !editor ||
+              !Array.isArray(editor.properties) ||
+              !coreProperties.every((key) => editor.properties.includes(key)) ||
+              !Array.isArray(editor.savedProperties) ||
+              !Array.isArray(editor.unchangedProperties) ||
+              !coreProperties.every(
+                (key) =>
+                  editor.savedProperties.includes(key) ||
+                  editor.unchangedProperties.includes(key),
+              ) ||
+              typeof editor.text?.applicable !== "boolean" ||
+              (editor.text.applicable &&
+                typeof editor.text.saved !== "string") ||
+              !Array.isArray(editor.checks) ||
+              editor.checks.length !== 6 ||
+              editor.checks.some(
+                (check) => typeof check !== "string" || !check.trim(),
+              ) ||
+              new Set(editor.checks).size !== 6 ||
+              checkpoint?.outcome !== "passed" ||
+              !(await access(join(directory, "hidden.png"))
+                .then(() => true)
+                .catch(() => false))
+            ) {
+              throw new Error(
+                `Invalid comprehensive editor evidence in candidate ${path}.`,
+              );
+            }
+          }
           return { source, result, current };
         }),
       )
@@ -162,7 +205,13 @@ for (const site of sites)
     const files = original
       ? (
           await Promise.all(
-            ["trace.zip", "checks.json", "hidden.png", "failure.png"].map(
+            [
+              "trace.zip",
+              "checks.json",
+              "editor-checks.json",
+              "hidden.png",
+              "failure.png",
+            ].map(
               async (file) =>
                 await access(join(original, file))
                   .then(() => file)
@@ -279,7 +328,7 @@ const escape = (value) =>
         c
       ],
   );
-const html = `<!doctype html><html lang="en"><meta charset="utf-8"><title>Taylr browser acceptance</title><style>body{font:14px/1.5 system-ui;margin:32px;color:#203c30}h1{font-size:24px}table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:12px;border-bottom:1px solid #ddd;vertical-align:top}small{display:block;color:#55605a}a,.passed{color:#24583e}.blocked,[class$=failed],[class$=error]{color:#99391d}</style><h1>Taylr · Hide acceptance</h1><p>${sites.length} catalog sites · ${rows.length - counts["not-selected"]}/${rows.length} selected component contracts · ${verifiedSites} sites fully verified in this run.</p><p>${Object.entries(
+const html = `<!doctype html><html lang="en"><meta charset="utf-8"><title>Taylr browser acceptance</title><style>body{font:14px/1.5 system-ui;margin:32px;color:#203c30}h1{font-size:24px}table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:12px;border-bottom:1px solid #ddd;vertical-align:top}small{display:block;color:#55605a}a,.passed{color:#24583e}.blocked,[class$=failed],[class$=error]{color:#99391d}</style><h1>Taylr · Edit and Hide acceptance</h1><p>${sites.length} catalog sites · ${rows.length - counts["not-selected"]}/${rows.length} selected component contracts · ${verifiedSites} sites fully verified in this run.</p><p>${Object.entries(
   counts,
 )
   .filter(([, count]) => count)

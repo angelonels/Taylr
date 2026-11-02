@@ -6,7 +6,7 @@ import { evidencePath } from "../run-evidence.mjs";
 
 // Failure first: automatic focus on first open must retain the primary fill,
 // legible text and a keyboard focus indicator, in both idle and picking states.
-test("Startup: focused Hide retains contrast on first open and reopen", async () => {
+test("Startup: focused start action and active Hide retain contrast", async () => {
   const instance = await isolatedBrowser();
   const { context, extensionId, worker } = instance;
   await context.tracing.start({
@@ -20,33 +20,74 @@ test("Startup: focused Hide retains contrast on first open and reopen", async ()
     await page.goto("http://127.0.0.1:5173/tests/fixture.html");
     const dock = await openDock(context, bridge, page);
     const hide = dock.locator("#hide");
-    const checkContrast = async (keyboardFocus = true) => {
-      await expect(hide).toBeFocused();
-      await expect(hide).toHaveCSS("background-image", "none");
-      if (keyboardFocus) await expect(hide).toHaveCSS("outline-style", "solid");
-      const contrast = await hide.evaluate((button) => {
-        const style = getComputedStyle(button);
-        const luminance = (color: string) => {
-          const rgb = color
-            .match(/[\d.]+/g)
-            .slice(0, 3)
-            .map(Number)
-            .map((v) => {
-              const c = v / 255;
-              return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-            });
-          return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+    const checkContrast = async (keyboardFocus = true, target = hide) => {
+      if (target === hide) {
+        await expect(hide).toBeFocused();
+        if (keyboardFocus)
+          await expect(hide).toHaveCSS("outline-style", "solid");
+      }
+      const pixels = (await target.screenshot()).toString("base64");
+      const contrast = await target.evaluate(async (button, pixels) => {
+        const luminance = (rgb: number[]) => {
+          const channels = rgb.map((v) => {
+            const c = v / 255;
+            return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+          });
+          return (
+            channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722
+          );
         };
-        const foreground = luminance(style.color);
-        const background = luminance(style.backgroundColor);
-        return (
-          (Math.max(foreground, background) + 0.05) /
-          (Math.min(foreground, background) + 0.05)
+        const foreground = luminance(
+          getComputedStyle(button)
+            .color.match(/[\d.]+/g)
+            .slice(0, 3)
+            .map(Number),
         );
-      });
+        // Read rendered pixels: translucent controls inherit the website's
+        // backdrop, so their CSS fill alone cannot establish contrast.
+        const img = new Image();
+        img.src = `data:image/png;base64,${pixels}`;
+        await img.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        return Math.min(
+          ...[10, Math.floor(img.height / 2), img.height - 10].map((y) => {
+            const background = luminance(
+              Array.from(
+                ctx.getImageData(
+                  img.width - (button.id === "start-edit" ? 10 : 24),
+                  y,
+                  1,
+                  1,
+                ).data,
+              ).slice(0, 3),
+            );
+            return (
+              (Math.max(foreground, background) + 0.05) /
+              (Math.min(foreground, background) + 0.05)
+            );
+          }),
+        );
+      }, pixels);
       expect(contrast).toBeGreaterThanOrEqual(4.5);
     };
-    await checkContrast();
+    await expect(dock.locator("#start-edit")).toBeFocused();
+    await checkContrast(true, dock.locator("#start-edit"));
+    // Small header text must remain legible on the brightest website backdrop,
+    // not only inside the primary control's additional glass backing.
+    await page.evaluate(() => {
+      const backdrop = document.createElement("div");
+      backdrop.id = "white-backdrop";
+      backdrop.style.cssText =
+        "position:fixed;inset:0;z-index:2147483000;background:white";
+      document.body.append(backdrop);
+    });
+    for (const selector of [".brand", ".site-name", ".site small"])
+      await checkContrast(false, dock.locator(selector));
+    await page.locator("#white-backdrop").evaluate((el) => el.remove());
     await captureEvidence(page, evidencePath("first-open.png"), {
       locator: dock.locator(".dock"),
     });
@@ -66,14 +107,16 @@ test("Startup: focused Hide retains contrast on first open and reopen", async ()
     await hide.press("Enter");
     await expect(hide).toHaveAttribute("aria-pressed", "true");
     await checkContrast();
-    // Pointer hover must preserve coral picking feedback after clicking Hide.
+    // Pointer hover must preserve blue picking feedback after clicking Hide.
     await hide.hover();
-    await expect(hide).toHaveCSS("background-color", "rgb(255, 178, 162)");
+    await checkContrast();
+    await expect(hide).toHaveAttribute("aria-pressed", "true");
     await page.keyboard.press("Escape");
     await dock.locator("#close").click();
     await invokeAction(context, bridge, page);
     // Pointer-origin focus need not match :focus-visible; readability still must.
-    await checkContrast(false);
+    await expect(dock.locator("#start-edit")).toBeFocused();
+    await checkContrast(false, dock.locator("#start-edit"));
     // Choosing another control during the pending check must keep that focus.
     await hide.press("Enter");
     await expect(hide).toHaveAttribute("aria-busy", "true");

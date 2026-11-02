@@ -1,7 +1,7 @@
 import { evidencePath } from "../run-evidence.mjs";
 import { test, expect } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
-import { driver, openDock } from "../dock-actions.mjs";
+import { driver, openDock, startHide } from "../dock-actions.mjs";
 
 // Failure contract: valid HTML names can contain a colon (for example Office
 // exports). Selector generation must escape the tag without breaking persistence.
@@ -27,7 +27,7 @@ test("Picker: namespaced HTML content hides and restores across reload", async (
     );
     await page.goto("http://127.0.0.1:5173/tests/fixture.html");
     const dock = await openDock(context, bridge, page);
-    await dock.locator("#hide").click();
+    await startHide(dock);
     await page.locator("#office-content").click();
     await expect(page.locator("#office-content")).toBeHidden();
     await expect(page.locator("#keep")).toBeVisible();

@@ -84,6 +84,12 @@ test("Runner finalization never leaves a passing catalog after cleanup or attach
     expect(child.code).toBe(expected === "blocked" ? 0 : 1);
     expect(record.outcome).toBe(expected);
     expect(record.passed).toBe(false);
+    if (scenario === "cleanup" || scenario === "attachment") {
+      const checkpoints = JSON.parse(
+        await readFile(join(root, "sites/youtube/primary/checks.json"), "utf8"),
+      );
+      expect(checkpoints.outcome).toBe(expected);
+    }
     const runner = JSON.parse(
       await readFile(join(root, "runner.json"), "utf8"),
     );

@@ -7,7 +7,7 @@ declare global {
 
 import { test, expect } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
-import { driver, openDock } from "../dock-actions.mjs";
+import { driver, openDock, startEdit, startHide } from "../dock-actions.mjs";
 
 // Failure contract: keyboard grip activation must jump immediately, and a held
 // keyboard press must not shrink controls. Pointer release keeps its spring.
@@ -78,12 +78,15 @@ test("Dock layout: six widths, native 200% zoom, edge expansion and reduced moti
     const box = () => dock.locator(".dock").boundingBox();
     // Failure first: actions must form a visible vertical column; the overlay must
     // keep its header and exit reachable as content grows and the viewport shrinks.
+    const edit = await dock.locator("#edit").boundingBox();
     const hide = await dock.locator("#hide").boundingBox();
     const undo = await dock.locator("#undo").boundingBox();
     const rules = await dock.locator("#rules-toggle").boundingBox();
+    expect(hide.y).toBeGreaterThanOrEqual(edit.y + edit.height);
     expect(undo.y).toBeGreaterThanOrEqual(hide.y + hide.height);
     expect(rules.y).toBeGreaterThanOrEqual(undo.y + undo.height);
-    expect((await box()).width).toBeLessThanOrEqual(288);
+    expect((await box()).width).toBeLessThanOrEqual(392);
+    expect((await box()).height).toBeGreaterThan(800);
     for (const width of [320, 375, 768, 1024, 1440, 2560]) {
       await page.setViewportSize({ width, height: 900 });
       await expect
@@ -92,18 +95,18 @@ test("Dock layout: six widths, native 200% zoom, edge expansion and reduced moti
           return b.x >= 15 && b.x + b.width <= width - 15;
         })
         .toBe(true);
-      await dock.locator("#hide").click();
+      await startHide(dock);
       await expect(dock.locator("#cancel")).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(dock.locator("#hide")).toBeFocused();
     }
     // The command column stays in place as details expand below it.
-    const bar = await dock.locator(".bar").boundingBox();
-    await dock.locator("#hide").click();
+    const bar = await dock.locator(".panel-header").boundingBox();
+    await startHide(dock);
     await expect(dock.locator("#cancel")).toBeVisible();
     await expect
       .poll(async () =>
-        Math.abs((await dock.locator(".bar").boundingBox()).y - bar.y),
+        Math.abs((await dock.locator(".panel-header").boundingBox()).y - bar.y),
       )
       .toBeLessThan(1);
     await page.keyboard.press("Escape");
@@ -114,17 +117,22 @@ test("Dock layout: six widths, native 200% zoom, edge expansion and reduced moti
     await page.setViewportSize({ width: 1440, height: 900 });
     await dock.locator("#move").focus();
     await page.keyboard.press("Enter");
-    await expect.poll(async () => (await box()).x).toBeGreaterThan(1100);
+    await expect
+      .poll(async () => {
+        const bounds = await box();
+        return Math.abs(bounds.x + bounds.width - 1424);
+      })
+      .toBeLessThan(0.1);
     await page.keyboard.press("Enter");
     await expect
       .poll(async () => Math.abs((await box()).x - 16))
       .toBeLessThan(0.1);
-    const top = await dock.locator(".bar").boundingBox();
-    await dock.locator("#hide").click();
+    const top = await dock.locator(".panel-header").boundingBox();
+    await startHide(dock);
     await expect(dock.locator("#cancel")).toBeVisible();
     await expect
       .poll(async () =>
-        Math.abs((await dock.locator(".bar").boundingBox()).y - top.y),
+        Math.abs((await dock.locator(".panel-header").boundingBox()).y - top.y),
       )
       .toBeLessThan(1);
     await page.keyboard.press("Escape");
@@ -212,11 +220,13 @@ test("Panel overflow: long rule list and unbroken selection label", async () => 
     const dock = await openDock(context, bridge, page);
     await dock.locator("#rules-toggle").click();
     await expect(dock.locator(".rule")).toHaveCount(12);
-    const header = await dock.locator(".bar").boundingBox();
+    const header = await dock.locator(".panel-header").boundingBox();
     const lastRestore = dock.locator(".rule button").last();
     await lastRestore.scrollIntoViewIfNeeded();
     await expect(lastRestore).toBeInViewport();
-    expect((await dock.locator(".bar").boundingBox()).y).toBe(header.y);
+    expect((await dock.locator(".panel-header").boundingBox()).y).toBe(
+      header.y,
+    );
     await expect(dock.locator("#close")).toBeInViewport();
     await lastRestore.click();
     await expect(dock.locator(".rule")).toHaveCount(11);
@@ -226,8 +236,7 @@ test("Panel overflow: long rule list and unbroken selection label", async () => 
         .querySelector("#distraction")
         .setAttribute("aria-label", "X".repeat(500));
     });
-    await dock.locator("#hide").click();
-    await expect(dock.locator("#hide")).toHaveAttribute("aria-pressed", "true");
+    await startHide(dock);
     await page.locator("#distraction").hover();
     await expect(dock.locator("#selection-text")).toContainText("X".repeat(80));
     const label = await dock.locator("#selection-text").boundingBox();
@@ -245,5 +254,57 @@ test("Panel overflow: long rule list and unbroken selection label", async () => 
       path: evidencePath("panel-overflow-trace.zip"),
     });
     await instance.close();
+  }
+});
+
+// Failure first: a short pre-lock panel clips Cancel without a wheel scroller;
+// folding a locked editor shrinks the tool row until icons and labels are cut.
+test("Short editors keep Cancel scrollable and folded tool labels visible", async () => {
+  const instance = await isolatedBrowser();
+  const { context, extensionId } = instance;
+  await context.tracing.start({
+    screenshots: true,
+    snapshots: true,
+    sources: true,
+  });
+  try {
+    const bridge = await driver(context, extensionId);
+    const page = await context.newPage();
+    await page.goto("http://127.0.0.1:5173/tests/fixture.html");
+    const dock = await openDock(context, bridge, page);
+    await page.setViewportSize({ width: 320, height: 480 });
+    await startEdit(dock);
+    const details = await dock.locator(".details").boundingBox();
+    await page.mouse.move(details!.x + details!.width / 2, details!.y + 40);
+    await page.mouse.wheel(0, 1000);
+    await expect(dock.locator("#edit-cancel")).toBeInViewport();
+    await dock.locator("#edit-cancel").click();
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await startEdit(dock);
+    await page.locator("#keep").click();
+    await dock.locator("#edit-opacity").fill("67");
+    await page.setViewportSize({ width: 320, height: 480 });
+    await dock.locator("#fold").click();
+    await expect
+      .poll(() =>
+        dock
+          .locator(".tools")
+          .evaluate((element) => element.scrollHeight <= element.clientHeight),
+      )
+      .toBe(true);
+    await expect(dock.locator("#edit-save")).toBeInViewport();
+    await expect(dock.locator("#close")).toBeInViewport();
+    await page.screenshot({ path: evidencePath("short-folded-editor.png") });
+    await dock.locator("#edit-save").click();
+    await expect(dock.locator("#status")).toHaveText("Changes saved.");
+    await expect(page.locator("#keep")).toHaveCSS("opacity", "0.67");
+  } finally {
+    try {
+      await context.tracing.stop({
+        path: evidencePath("short-editor-trace.zip"),
+      });
+    } finally {
+      await instance.close();
+    }
   }
 });

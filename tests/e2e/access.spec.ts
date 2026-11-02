@@ -2,7 +2,7 @@ import { evidencePath } from "../run-evidence.mjs";
 import { test, expect } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import { isolatedBrowser } from "../isolated-browser.mjs";
-import { driver, openDock } from "../dock-actions.mjs";
+import { driver, openDock, startHide } from "../dock-actions.mjs";
 
 // An ordinary HTTPS page must not be classified as Chrome-protected merely because
 // a previous panel lacked access to its URL. This does not bypass website challenges.
@@ -28,7 +28,7 @@ test("LeetCode: action opens dock on ordinary HTTPS, record application access s
     });
     const title = await page.title();
     const dock = await openDock(context, bridge, page);
-    await dock.locator("#hide").click();
+    await startHide(dock);
     await expect(
       page.getByRole("region", { name: "Taylr Hide" }),
     ).toBeVisible();

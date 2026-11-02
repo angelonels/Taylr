@@ -47,7 +47,7 @@ function linkSelector(tag: string, value: string): string {
       !(productAttribution && /^(iid|ssid|ppt|ppn)=/i.test(parameter)) &&
       !(videoAttribution && /^pp=/i.test(parameter)),
   );
-  if (stable.length === parameters.length)
+  if (!path || stable.length === 0 || stable.length === parameters.length)
     return `${tag}[href=${CSS.escape(value)}]`;
   let selector = `${tag}:is([href=${CSS.escape(path)}],[href^=${CSS.escape(path + "?")}])`;
   for (const parameter of stable) {
@@ -65,11 +65,33 @@ function linkSelector(tag: string, value: string): string {
     selector += `[href$=${CSS.escape("#" + fragment.join("#"))}]`;
   return selector;
 }
+function* ownedLinks(scope: Element): Generator<string> {
+  const seen = new Set<string>();
+  for (const link of scope.querySelectorAll<HTMLAnchorElement>("a[href]")) {
+    const href = link.getAttribute("href");
+    if (!href || href === "#") continue;
+    const ownership = [linkSelector("a", href)];
+    let parent: Element | null = link.parentElement;
+    while (parent && parent !== scope) {
+      ownership.unshift(CSS.escape(parent.localName));
+      parent = parent.parentElement;
+    }
+    const path = `> ${ownership.join(" > ")}`;
+    if (parent === scope && !seen.has(path)) {
+      seen.add(path);
+      yield path;
+    }
+  }
+}
 export function selectorFor(element: Element): string | null {
   if (!canSelect(element)) return null;
   const unique = (selector: string) => {
-    const matches = document.querySelectorAll(selector);
-    return matches.length === 1 && matches[0] === element;
+    try {
+      const matches = document.querySelectorAll(selector);
+      return matches.length === 1 && matches[0] === element;
+    } catch {
+      return false;
+    }
   };
   const path: string[] = [];
   let node: Element | null = element;
@@ -86,12 +108,13 @@ export function selectorFor(element: Element): string | null {
       "data-asin",
       "href",
       "aria-label",
+      "alt",
       "aria-haspopup",
       "name",
       "role",
     ]) {
       const value = node.getAttribute(attr);
-      if (!value) continue;
+      if (!value || (attr === "alt" && !value.trim())) continue;
       const selector =
         attr === "href"
           ? linkSelector(tag, value)
@@ -103,17 +126,6 @@ export function selectorFor(element: Element): string | null {
       const combinedPath = [combined, ...path].join(" > ");
       if (unique(combinedPath)) return combinedPath;
     }
-    // Prefer combinations of semantic identity over a potentially attributed child link.
-    for (const selector of [...candidates, tag]) {
-      // A card can keep its identity through wrapper/reordering changes via its own link.
-      const link = node.querySelector("a[href]");
-      const href = link?.getAttribute("href");
-      if (href && href !== "#") {
-        const anchored = `${selector}:has(${linkSelector("a", href)})`;
-        const anchoredPath = [anchored, ...path].join(" > ");
-        if (unique(anchoredPath)) return anchoredPath;
-      }
-    }
     // UUIDs and React-generated identifiers describe a render, not a persistent element.
     const generatedId =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -124,13 +136,42 @@ export function selectorFor(element: Element): string | null {
       const full = [selector, ...path].join(" > ");
       if (unique(full)) return full;
     }
+    // Retain link ownership inside the card. A descendant-only anchor can
+    // broaden when another page section repeats the same content link later.
+    // Stop building unrelated paths once a link identifies this component.
+    // Reuse paths locally if a later semantic candidate must be tried.
+    const links = ownedLinks(node);
+    const visitedLinks: string[] = [];
+    // Keep semantic attribute combinations ahead of a child content link.
+    for (const selector of [...candidates, tag]) {
+      for (const link of visitedLinks) {
+        const anchoredPath = [`${selector}:has(${link})`, ...path].join(" > ");
+        if (unique(anchoredPath)) return anchoredPath;
+      }
+      for (const link of links) {
+        visitedLinks.push(link);
+        const anchoredPath = [`${selector}:has(${link})`, ...path].join(" > ");
+        if (unique(anchoredPath)) return anchoredPath;
+      }
+    }
     const peers = node.parentElement
       ? [...node.parentElement.children].filter(
           (peer) => peer.localName === name,
         )
       : [];
+    // A lazy-image placeholder can appear beside the selected picture later.
+    // Keep its alternative text even when only the surrounding card is unique.
+    const alt = name === "img" ? node.getAttribute("alt") : null;
+    const segment = alt?.trim() ? `${tag}[alt=${CSS.escape(alt)}]` : tag;
+    const matchingPeers = alt?.trim()
+      ? peers.filter((peer) => peer.getAttribute("alt") === alt)
+      : peers;
     const part =
-      peers.length > 1 ? `${tag}:nth-of-type(${peers.indexOf(node) + 1})` : tag;
+      matchingPeers.length > 1
+        ? alt?.trim()
+          ? `${segment}:nth-child(${matchingPeers.indexOf(node) + 1} of ${segment})`
+          : `${segment}:nth-of-type(${peers.indexOf(node) + 1})`
+        : segment;
     path.unshift(part);
     const full = path.join(" > ");
     if (unique(full)) return full;

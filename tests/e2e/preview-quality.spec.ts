@@ -2,7 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { test, expect } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
 import { evidencePath } from "../run-evidence.mjs";
-import { driver, openDock } from "../dock-actions.mjs";
+import { driver, openDock, startHide } from "../dock-actions.mjs";
 
 // Failure contracts written before the capture redesign: slow native capture
 // still produces a preview; rapid consecutive hides respect Chrome's quota;
@@ -166,7 +166,7 @@ for (const scenario of [
             return execute(options);
           };
         });
-      await dock.locator("#hide").click();
+      await startHide(dock);
       // Registration is asynchronous; target input belongs to the picker only
       // after its pressed state confirms the real handlers are installed.
       await expect(dock.locator("#hide")).toHaveAttribute(

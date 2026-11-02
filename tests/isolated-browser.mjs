@@ -16,6 +16,7 @@ export async function isolatedBrowser(
     nativeAction = false,
     productionPermissions = false,
     deviceScaleFactor = 1,
+    hasTouch = false,
     browserArgs = [],
   } = {},
 ) {
@@ -23,7 +24,7 @@ export async function isolatedBrowser(
   const extension = join(root, "extension");
   let context;
   try {
-    await cp("dist", extension, { recursive: true });
+    await cp("dist", extension, { recursive: true, dereference: true });
     const manifest = JSON.parse(
       await readFile(join(extension, "manifest.json"), "utf8"),
     );
@@ -75,6 +76,7 @@ chrome.permissions.request = async permissions => (await chrome.permissions.cont
       headless: process.env.TAYLR_HEADED !== "1",
       viewport: { width: 1440, height: 1000 },
       deviceScaleFactor,
+      hasTouch,
       locale: "en-US",
       timezoneId: "UTC",
       args: [
@@ -83,6 +85,13 @@ chrome.permissions.request = async permissions => (await chrome.permissions.cont
         ...browserArgs,
       ],
     });
+    // The fixture belongs to this disposable browser, not a shared Vite port.
+    // Later scenario routes take precedence, allowing explicit fault injection.
+    await context.route(
+      /^http:\/\/127\.0\.0\.1:5173\/tests\/fixture\.html(?:\?.*)?$/,
+      (route) =>
+        route.fulfill({ path: "tests/fixture.html", contentType: "text/html" }),
+    );
     context.setDefaultTimeout(actionTimeout);
     context.setDefaultNavigationTimeout(navigationTimeout);
     let [worker] = context.serviceWorkers();
@@ -100,6 +109,7 @@ chrome.permissions.request = async permissions => (await chrome.permissions.cont
         arch: process.arch,
         viewport: { width: 1440, height: 1000 },
         deviceScaleFactor,
+        hasTouch,
         locale: "en-US",
         timezone: "UTC",
         permissionModel: productionPermissions

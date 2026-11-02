@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { isolatedBrowser } from "../isolated-browser.mjs";
-import { driver, openDock } from "../dock-actions.mjs";
+import { driver, openDock, startHide } from "../dock-actions.mjs";
 import { evidencePath } from "../run-evidence.mjs";
 
 // Failure contracts: install grants all HTTP(S) sites without per-site prompts;
@@ -31,8 +31,7 @@ test("Site access: install grants, pause across tabs, reload and resume", async 
     const first = await context.newPage();
     await first.goto("http://127.0.0.1:5173/tests/fixture.html");
     const dock = await openDock(context, bridge, first);
-    await dock.locator("#hide").click();
-    await expect(dock.locator("#hide")).toHaveAttribute("aria-pressed", "true");
+    await startHide(dock);
     await first.locator("#distraction").click();
     await expect(first.locator("#distraction")).toBeHidden();
     await first.keyboard.press("Escape");
@@ -81,11 +80,7 @@ test("Site access: install grants, pause across tabs, reload and resume", async 
     await other.goto("https://example.test/");
     const otherDock = await openDock(context, bridge, other);
     await expect(otherDock.locator("#hide")).toBeEnabled();
-    await otherDock.locator("#hide").click();
-    await expect(otherDock.locator("#hide")).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    await startHide(otherDock);
     await other.keyboard.press("Escape");
     await first.bringToFront();
     await dock.locator("#site-pause").click();

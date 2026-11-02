@@ -1,3 +1,5 @@
+import { storeProfile } from "./background/store-profile";
+import { validStyles } from "./edit-properties";
 import { openTools } from "./background/open-tools";
 import {
   validPreview,
@@ -7,8 +9,10 @@ import {
 import {
   storageArea,
   storageKey,
+  RequestError,
   type Request,
   type SiteProfile,
+  type Rule,
 } from "./model";
 
 // One writer serializes profile changes across tabs; broadcasts update each controller.
@@ -16,7 +20,15 @@ let pending = Promise.resolve();
 chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
   if (
     !message ||
-    !["get", "add", "remove", "restore", "set-paused"].includes(message.type)
+    ![
+      "get",
+      "add",
+      "edit",
+      "undo-edit",
+      "remove",
+      "restore",
+      "set-paused",
+    ].includes(message.type)
   )
     return;
   pending = pending.then(async () => {
@@ -42,6 +54,64 @@ chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
         rules: [],
       };
       let createdRuleId: string | undefined;
+      let savedRule: Rule | undefined, previousRule: Rule | undefined;
+      if (message.type === "edit") {
+        if (profile.paused) throw new Error("Resume this site before editing.");
+        if (
+          !validStyles(message.styles) ||
+          typeof message.selector !== "string" ||
+          message.selector.length > 4096 ||
+          /[{}]/.test(message.selector) ||
+          typeof message.label !== "string" ||
+          (message.text !== undefined &&
+            (typeof message.text !== "string" || message.text.length > 5000))
+        )
+          throw new Error("Invalid element changes.");
+        const existing = profile.rules.find(
+          (rule) => rule.kind === "edit" && rule.selector === message.selector,
+        );
+        previousRule = existing ? structuredClone(existing) : undefined;
+        savedRule = {
+          id: existing?.id ?? crypto.randomUUID(),
+          kind: "edit",
+          selector: message.selector,
+          label: message.label.slice(0, 120),
+          styles: { ...existing?.styles, ...message.styles },
+          ...(existing?.text !== undefined ? { text: existing.text } : {}),
+          ...(message.text !== undefined ? { text: message.text } : {}),
+          revision: crypto.randomUUID(),
+          createdAt: existing?.createdAt ?? Date.now(),
+        };
+        profile.rules = [
+          ...profile.rules.filter((rule) => rule.id !== existing?.id),
+          savedRule,
+        ];
+      }
+      if (message.type === "undo-edit") {
+        const current = profile.rules.find((rule) => rule.id === message.id);
+        if (
+          !current ||
+          current.kind !== "edit" ||
+          current.revision !== message.revision
+        )
+          throw new RequestError(
+            "This rule changed in another tab. Use Edits to restore it.",
+            "revision-conflict",
+          );
+        if (
+          message.before &&
+          (message.before.id !== current.id ||
+            message.before.kind !== "edit" ||
+            message.before.selector !== current.selector ||
+            !validStyles(message.before.styles) ||
+            (message.before.text !== undefined &&
+              (typeof message.before.text !== "string" ||
+                message.before.text.length > 5000)))
+        )
+          throw new Error("Invalid rule history.");
+        profile.rules = profile.rules.filter((rule) => rule.id !== message.id);
+        if (message.before) profile.rules.push(message.before);
+      }
       if (message.type === "set-paused") {
         if (typeof message.paused !== "boolean")
           throw new Error("Invalid site setting.");
@@ -58,7 +128,12 @@ chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
           throw new Error(
             "This element cannot be saved. Try a surrounding element.",
           );
-        if (!profile.rules.some((rule) => rule.selector === message.selector)) {
+        if (
+          !profile.rules.some(
+            (rule) =>
+              rule.kind !== "edit" && rule.selector === message.selector,
+          )
+        ) {
           createdRuleId = crypto.randomUUID();
           profile.rules.push({
             id: createdRuleId,
@@ -78,23 +153,10 @@ chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
         profile.rules = profile.rules.filter((rule) => rule.id !== message.id);
       if (message.type === "restore") profile.rules = [];
       if (message.type !== "get") {
-        try {
-          await chrome.storage[storageArea()].set({ [key]: profile });
-        } catch (error) {
-          // A preview is optional: storage pressure must never prevent a new Hide.
-          const added = profile.rules.find((rule) => rule.id === createdRuleId);
-          if (!added?.preview) throw error;
-          delete added.preview;
-          await chrome.storage[storageArea()].set({ [key]: profile });
-        }
-        let setupError: unknown;
-        if (message.type === "set-paused" && !message.paused) {
-          try {
-            await registerOrigin(message.origin);
-          } catch (error) {
-            setupError = error;
-          }
-        }
+        // Permission/setup failure must leave the persisted pause state intact.
+        if (message.type === "set-paused" && !message.paused)
+          await registerOrigin(message.origin);
+        await storeProfile(key, profile, createdRuleId);
         const tabs = await chrome.tabs.query({ url: `${message.origin}/*` });
         await Promise.allSettled(
           tabs
@@ -116,13 +178,13 @@ chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
               });
             }),
         );
-        if (setupError) throw setupError;
       }
-      reply({ profile, createdRuleId });
+      reply({ profile, createdRuleId, savedRule, previousRule });
     } catch (error) {
       reply({
         error:
           error instanceof Error ? error.message : "Could not save. Try again.",
+        ...(error instanceof RequestError ? { code: error.code } : {}),
       });
     }
   });
@@ -219,22 +281,49 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     try {
       if (
         typeof message.previous !== "string" ||
-        typeof message.css !== "string"
+        typeof message.css !== "string" ||
+        (message.pending !== undefined &&
+          (!Array.isArray(message.pending) ||
+            message.pending.some((css: unknown) => typeof css !== "string")))
       )
         throw new Error("Invalid stylesheet");
       const target = sender.documentId
         ? { tabId, documentIds: [sender.documentId] }
         : { tabId };
-      if (message.previous)
+      const obsolete = new Set<string>([
+        message.previous,
+        ...(message.pending ?? []),
+      ]);
+      obsolete.delete("");
+      obsolete.delete(message.css);
+      if (message.css === message.previous && !obsolete.size) {
+        reply({ ok: true });
+        return;
+      }
+      // Chrome stacks identical insertions and removes only one copy. A failed
+      // render can leave this desired text inserted, or already removed during
+      // partial cleanup. Normalize that uncertain copy before inserting once.
+      if (
+        message.css &&
+        (message.css === message.previous ||
+          message.pending?.includes(message.css))
+      )
         await chrome.scripting.removeCSS({
           target,
-          css: message.previous,
+          css: message.css,
           origin: "USER",
         });
+      // Normal replacements install first, avoiding a flash of site styles.
       if (message.css)
         await chrome.scripting.insertCSS({
           target,
           css: message.css,
+          origin: "USER",
+        });
+      for (const css of obsolete)
+        await chrome.scripting.removeCSS({
+          target,
+          css,
           origin: "USER",
         });
       reply({ ok: true });

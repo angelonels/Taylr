@@ -31,3 +31,17 @@ export async function openDock(context, bridge, page) {
   await expect(page.getByRole("toolbar", { name: "Taylr" })).toBeVisible();
   return page.locator("taylr-tools");
 }
+
+// A completed click only starts asynchronous registration. Page input needs an
+// installed picker, including its capture listeners, before it can select a node.
+export async function startEdit(dock) {
+  await dock.locator("#edit").click();
+  await expect(dock.locator("#edit")).toHaveAttribute("aria-pressed", "true");
+  await expect(dock.locator("#hide")).toHaveAttribute("aria-busy", "false");
+}
+
+export async function startHide(dock) {
+  await dock.locator("#hide").click();
+  await expect(dock.locator("#hide")).toHaveAttribute("aria-pressed", "true");
+  await expect(dock.locator("#hide")).toHaveAttribute("aria-busy", "false");
+}
