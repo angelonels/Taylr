@@ -939,7 +939,7 @@ function createInspector(): Inspector {
       return true;
     }
   });
-  const textObserver = new MutationObserver(() => {
+  function reapplyText() {
     if (
       profile.rules.some(
         (rule) => rule.kind === "edit" && rule.text !== undefined,
@@ -961,7 +961,10 @@ function createInspector(): Inspector {
         error = true;
         publish();
       }
-  });
+  }
+  const textObserver = new MutationObserver(reapplyText);
+  // The last parsed element closes without a further mutation.
+  document.addEventListener("DOMContentLoaded", reapplyText, { once: true });
   textObserver.observe(document, {
     childList: true,
     subtree: true,

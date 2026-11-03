@@ -128,6 +128,19 @@ function ownsText(element: Element, snapshot: TextSnapshot) {
     )
   );
 }
+// Content scripts start before parsing ends. The parser still appends text to
+// the last open element, which merges with an edit and poisons its snapshot.
+// An element is closed once it or an ancestor below <body> has a successor.
+function parsed(element: Element) {
+  if (document.readyState !== "loading") return true;
+  for (
+    let node: Node | null = element;
+    node && node !== document.body && node !== document.documentElement;
+    node = node.parentNode
+  )
+    if (node.nextSibling) return true;
+  return false;
+}
 export class TextEdits {
   private tracked = new Map<Element, TextSnapshot>();
   apply(rules: Rule[], draft?: { target: Element; text: string }) {
@@ -137,7 +150,8 @@ export class TextEdits {
       if (rule.kind !== "edit" || typeof rule.text !== "string") continue;
       try {
         for (const element of document.querySelectorAll(rule.selector))
-          if (textEditable(element)) desired.set(element, rule.text);
+          if (textEditable(element) && parsed(element))
+            desired.set(element, rule.text);
       } catch {
         /* An obsolete selector cannot block other rules. */
       }
