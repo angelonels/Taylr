@@ -1905,7 +1905,7 @@
     "url": "https://docs.python.org/3/library/functions.html",
     "category": "Language reference · Sphinx sidebar, relation bar, function table, title",
     "notes": "Static Sphinx reference page. The relation bar and function table repeat lower on the page, so indexed targets keep the first visible copy.",
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
         "id": "sidebar",
@@ -1945,7 +1945,7 @@
     "url": "https://doc.rust-lang.org/std/vec/struct.Vec.html",
     "category": "Generated API docs · rustdoc sidebar, contents, item title, section",
     "notes": "Very long rustdoc page with script-driven sections and toggles.",
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
         "id": "sidebar",
@@ -1983,7 +1983,7 @@
     "url": "https://react.dev/learn",
     "category": "Framework docs · Next.js app, utility classes, sidebar, color-scheme control",
     "notes": "Tailwind-styled Next.js documentation with hydrated navigation.",
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
         "id": "theme",
@@ -2023,7 +2023,7 @@
     "url": "https://svelte.dev/docs",
     "category": "Framework docs · SvelteKit navigation, search, title, repeated cards",
     "notes": "SvelteKit documentation landing page with hydrated primary navigation.",
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
         "id": "navigation",
@@ -2034,10 +2034,10 @@
       },
       {
         "id": "search",
-        "component": "Docs search field",
-        "target": "input[aria-label=\"Search\"]",
+        "component": "Docs search form",
+        "target": "form",
         "keep": "#main h1",
-        "purpose": "Hide the search input without opening the search dialog."
+        "purpose": "Hide the search form without opening the search dialog. The input itself restyles on focus, so the form is the stable component."
       },
       {
         "id": "title",
@@ -2063,7 +2063,7 @@
     "url": "https://tailwindcss.com/docs/installation",
     "category": "Utility-class docs · generated class names, sidebar, tabbed guides",
     "notes": "Utility-heavy markup without semantic IDs exercises structural selectors.",
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
         "id": "sidebar",
@@ -2105,7 +2105,7 @@
     "url": "https://caniuse.com/css-grid",
     "category": "Compatibility data · tabs, search, support table, footer",
     "notes": "Data-heavy support tables rendered by script; an advertisement slot sits below the table.",
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
         "id": "tabs",
@@ -2143,7 +2143,7 @@
     "url": "https://arxiv.org/abs/1706.03762",
     "category": "Academic abstract · header, title, metadata table, tool panel",
     "notes": "Server-rendered abstract page; MathJax may re-render the title.",
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
         "id": "header",
@@ -2160,12 +2160,11 @@
         "purpose": "Hide the MathJax-processed paper title."
       },
       {
-        "id": "metadata",
-        "component": "Metadata table",
-        "target": "main table",
-        "targetIndex": 0,
-        "keep": "h1.title",
-        "purpose": "Hide the comments/subjects metadata table."
+        "id": "abstract",
+        "component": "Abstract",
+        "target": "blockquote.abstract",
+        "keep": "header",
+        "purpose": "Hide the MathJax-capable abstract text block while the site header stays."
       },
       {
         "id": "labs",
@@ -2181,15 +2180,15 @@
     "name": "The Guardian",
     "url": "https://www.theguardian.com/international",
     "category": "News front · carousel, navigation, sections, sticky header",
-    "notes": "Heavy news front with carousels and many repeated sections.",
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "notes": "Heavy news front with carousels and many repeated sections. The masthead is excluded: its only link identity is a support URL whose every query value is per-visit attribution.",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
-        "id": "header",
-        "component": "Masthead",
-        "target": "header",
-        "keep": "#news",
-        "purpose": "Hide the masthead and support banner while the News section stays."
+        "id": "heading",
+        "component": "News section heading",
+        "target": "#news h2",
+        "keep": "header",
+        "purpose": "Hide the News container heading as a text leaf while the masthead stays."
       },
       {
         "id": "navigation",
@@ -2220,15 +2219,16 @@
     "name": "NPR",
     "url": "https://www.npr.org/",
     "category": "News and audio · live player, menu, promo cards, sponsor slot",
-    "notes": "Audio player widget and many repeated promo cards with captions.",
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "notes": "Audio player widget and many repeated promo cards with captions. The live player and sponsor slot were excluded after the player was absent on one visit and the sponsor re-rendered during editing.",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
-        "id": "player",
-        "component": "Live radio player",
-        "target": "#npr-player",
-        "keep": "#main-menu",
-        "purpose": "Hide the live radio player without starting audio."
+        "id": "header",
+        "component": "Global header",
+        "target": "#globalheader",
+        "keep": "article.c-promo-card",
+        "keepIndex": 0,
+        "purpose": "Hide the global header with its optional live player while promo cards stay."
       },
       {
         "id": "menu",
@@ -2247,12 +2247,13 @@
         "purpose": "Hide exactly one of many repeated promo cards."
       },
       {
-        "id": "sponsor",
-        "component": "Sponsor slot",
-        "target": "#ad-centerstage-wrap",
-        "keep": "article.c-promo-card",
-        "keepIndex": 0,
-        "purpose": "Hide the sponsor message slot between card rows."
+        "id": "headline",
+        "component": "Lead headline",
+        "target": "article.c-promo-card h2",
+        "targetIndex": 0,
+        "keep": "article.c-promo-card h2",
+        "keepIndex": 1,
+        "purpose": "Hide exactly one repeated promo headline as a text leaf."
       }
     ]
   },
@@ -2262,7 +2263,7 @@
     "url": "https://crates.io/crates/serde",
     "category": "Package registry · Ember app, search, subpage tabs, metadata",
     "notes": "Client-rendered Ember application.",
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
         "id": "search",
@@ -2300,7 +2301,7 @@
     "url": "https://lobste.rs/",
     "category": "Link aggregator · compact story list, menu, pagination",
     "notes": "Server-rendered list of many near-identical story rows.",
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
         "id": "menu",
@@ -2340,7 +2341,7 @@
     "url": "https://dev.to/",
     "category": "Community feed · sidebars, feed tabs, search, repeated posts",
     "notes": "Rails/Preact feed with two sidebars and many profile buttons.",
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
         "id": "search",
@@ -2382,7 +2383,7 @@
       "selector": ".monaco-editor .view-lines",
       "property": "textContent"
     },
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
         "id": "navigation",
@@ -2421,14 +2422,14 @@
     "url": "https://editor.p5js.org/",
     "category": "Creative coding IDE · toolbar, code editor, console, preview",
     "notes": "React IDE with CodeMirror and a sandboxed preview iframe. Running a sketch is never required.",
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
-        "id": "play",
-        "component": "Play button",
-        "target": "#play-sketch",
-        "keep": "button[aria-label=\"Open Preferences\"]",
-        "purpose": "Hide the Play control without running the sketch."
+        "id": "toolbar",
+        "component": "Sketch toolbar",
+        "target": "div.toolbar",
+        "keep": "section.editor",
+        "purpose": "Hide the play/stop toolbar without running the sketch. The toolbar intercepts pointer input for its buttons."
       },
       {
         "id": "name",
@@ -2463,7 +2464,7 @@
       "selector": "button[aria-label=\"prefer composition api\"]",
       "attribute": "aria-checked"
     },
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
         "id": "sidebar",
@@ -2501,7 +2502,7 @@
     "url": "https://www.weather.gov/",
     "category": "Government service · forecast lookup, hazard headline, saved locations",
     "notes": "Long-lived government portal with legacy markup.",
-    "status": "planned: 3 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 3/3 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
         "id": "forecast",
@@ -2533,7 +2534,7 @@
     "category": "Language docs · site header, documentation index, footer",
     "notes": "Server-rendered documentation index.",
     "dismiss": "section.js-cookieNotice button",
-    "status": "planned: 4 component contracts (added 2026-11-03; not yet qualified)",
+    "status": "planned: 4/4 passed a 2026-11-03 sandbox run on non-qualifying Chromium 153; not yet qualified",
     "components": [
       {
         "id": "header",
