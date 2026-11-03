@@ -123,6 +123,7 @@ chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
         if (
           typeof message.selector !== "string" ||
           message.selector.length > 4096 ||
+          /[{}]/.test(message.selector) ||
           typeof message.label !== "string"
         )
           throw new Error(

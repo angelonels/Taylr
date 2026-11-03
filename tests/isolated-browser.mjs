@@ -92,6 +92,17 @@ chrome.permissions.request = async permissions => (await chrome.permissions.cont
       (route) =>
         route.fulfill({ path: "tests/fixture.html", contentType: "text/html" }),
     );
+    // Screencast frames cost about a sixth of local suite time on a busy CPU.
+    // Local traces keep DOM snapshots and explicit PNG evidence; live runs keep
+    // screenshots for diagnosing public sites. Opt back in when debugging.
+    if (
+      process.env.TAYLR_LIVE_SITES !== "1" &&
+      process.env.TAYLR_TRACE_SCREENSHOTS !== "1"
+    ) {
+      const start = context.tracing.start.bind(context.tracing);
+      context.tracing.start = (options = {}) =>
+        start({ ...options, screenshots: false });
+    }
     context.setDefaultTimeout(actionTimeout);
     context.setDefaultNavigationTimeout(navigationTimeout);
     let [worker] = context.serviceWorkers();

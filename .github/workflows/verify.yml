@@ -42,7 +42,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       # The wrapper builds once, then owns the fixture server and evidence root.
       - name: Build and run local browser acceptance
-        run: npm run test:e2e -- --workers=2
+        run: npm run test:e2e
       - name: Run optional public-site acceptance
         if: github.event_name == 'workflow_dispatch' && inputs.live != 'none'
         env:

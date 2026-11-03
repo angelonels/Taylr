@@ -160,22 +160,50 @@ function createInspector(): Inspector {
     render();
     publish();
   }
+  // Each rule is parsed alone and re-serialized by the browser. A malformed
+  // selector or value cannot open a comment, string or block that swallows
+  // later rules or styles the page; it is dropped instead.
+  const scratch = new CSSStyleSheet();
+  const serialized = new Map<string, string>();
+  function contained(selector: string, body: string) {
+    const key = `${selector}\u0000${body}`;
+    let css = serialized.get(key);
+    if (css === undefined) {
+      try {
+        scratch.replaceSync(`${selector} { ${body} }`);
+        const [rule, ...rest] = scratch.cssRules;
+        css = rule instanceof CSSStyleRule && !rest.length ? rule.cssText : "";
+      } catch {
+        css = "";
+      }
+      // Editor drafts add one entry per keystroke; bound the cache.
+      if (serialized.size > 500) serialized.clear();
+      serialized.set(key, css);
+    }
+    return css;
+  }
+  // Text follows the same containment as styles: a selector the stylesheet
+  // drops must not still rewrite text through a lenient DOM query.
+  const activeRules = () =>
+    (profile.paused ? [] : profile.rules).filter(
+      (rule) => contained(rule.selector, "") !== "",
+    );
   function render() {
     mountStyle();
-    const rules = profile.paused ? [] : profile.rules;
+    const rules = activeRules();
     let css = rules
       .filter((rule) => rule.kind === "edit")
-      .map((rule) => `${rule.selector} { ${declarations(rule.styles ?? {})} }`)
+      .map((rule) => contained(rule.selector, declarations(rule.styles ?? {})))
       .join("\n");
     if (editor.target?.isConnected && !profile.paused)
-      css += `\n${editor.selector} { ${declarations(editor.changes)} }`;
+      css += `\n${contained(editor.selector, declarations(editor.changes))}`;
     const hidden = rules
       .filter((rule) => rule.kind !== "edit")
-      .map((rule) => `${rule.selector} { display: none !important; }`)
+      .map((rule) => contained(rule.selector, "display: none !important;"))
       .join("\n");
     // Important declarations in a layer outrank unlayered edits, even when an
     // older saved display rule has a more specific selector or was saved later.
-    if (hidden) css += `\n@layer taylr-visibility { ${hidden} }`;
+    if (hidden.trim()) css += `\n@layer taylr-visibility { ${hidden} }`;
     textEdits.apply(
       rules,
       editor.target?.isConnected &&
@@ -560,7 +588,8 @@ function createInspector(): Inspector {
   }
   function lockEdit() {
     if (!selected || busy || editor.target) return;
-    const existing = [...profile.rules].reverse().find((rule) => {
+    // A stored selector the stylesheet drops cannot own the new edit.
+    const existing = [...activeRules()].reverse().find((rule) => {
       if (rule.kind !== "edit") return false;
       try {
         const matches = document.querySelectorAll(rule.selector);
@@ -948,7 +977,7 @@ function createInspector(): Inspector {
     )
       if (
         textEdits.apply(
-          profile.paused ? [] : profile.rules,
+          activeRules(),
           editor.target?.isConnected &&
             editor.changedText !== undefined &&
             !profile.paused

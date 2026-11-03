@@ -36,9 +36,7 @@ The React/TypeScript/Tailwind panel loads on demand, inside Shadow DOM. The pick
 
 ```sh
 npx playwright install chromium
-npm run check
-npm run format:check
-npm run test:e2e -- --workers=2
+npm run verify  # types, lint, formatting and browser acceptance
 ```
 
 Tests build once and launch disposable Chromium with temporary data. Reports and traces live under `output/playwright/runs/`; `output/playwright/latest-run.json` locates the latest run. CI runs the local gate on pushes and pull requests and retains test/build artifacts.
