@@ -81,3 +81,39 @@ for (const control of ["color", "select"] as const)
         }
       }
     });
+
+// Failure first: a press that never becomes a click (dragged off before
+// release) must not leave stale press state for the next keyboard activation.
+test("An abandoned press does not swallow the next keyboard activation", async () => {
+  const instance = await isolatedBrowser();
+  const { context, extensionId } = instance;
+  await context.tracing.start({ snapshots: true, sources: true });
+  try {
+    const bridge = await driver(context, extensionId);
+    const page = await context.newPage();
+    await page.goto("http://127.0.0.1:5173/tests/fixture.html");
+    const dock = await openDock(context, bridge, page);
+    await startEdit(dock);
+    await page.locator("#keep").click();
+    const trigger = dock.locator("#edit-font-family");
+    const menu = dock.locator("#edit-font-family-menu");
+    await trigger.click();
+    await expect(menu).toBeVisible();
+    await trigger.hover();
+    await page.mouse.down();
+    await page.mouse.move(5, 5, { steps: 4 });
+    await page.mouse.up();
+    await expect(menu).toBeHidden();
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+    await expect(menu).toBeVisible();
+  } finally {
+    try {
+      await context.tracing.stop({
+        path: evidencePath("popover-toggle-abandoned-press.zip"),
+      });
+    } finally {
+      await instance.close();
+    }
+  }
+});

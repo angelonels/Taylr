@@ -143,10 +143,12 @@ export function Select({
             closed: false,
           };
         }}
-        onClick={() => {
+        onClick={(event) => {
           const { active, wasOpen, closed } = press.current;
           press.current = { active: false, wasOpen: false, closed: false };
-          if (active ? wasOpen || closed : open) close();
+          // Keyboard clicks have detail 0; a press that never became a click
+          // (dragged off, right-click, canceled touch) must not decide them.
+          if (event.detail > 0 && active ? wasOpen || closed : open) close();
           else show();
         }}
         onKeyDown={(event) => {
