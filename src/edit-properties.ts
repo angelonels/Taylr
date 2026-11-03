@@ -133,12 +133,13 @@ export function validStyles(input: unknown): input is StylePatch {
     );
   });
 }
+// Each declaration is checked alone, so one value saved under an older,
+// looser rule drops only itself instead of every property in its rule.
 export function declarations(styles: StylePatch) {
-  return validStyles(styles)
-    ? Object.entries(styles)
-        .map(([key, value]) => `${key}:${value} !important;`)
-        .join("")
-    : "";
+  return Object.entries(styles)
+    .filter(([key, value]) => validStyles({ [key]: value }))
+    .map(([key, value]) => `${key}:${value} !important;`)
+    .join("");
 }
 export function textEditable(element: Element): element is HTMLElement {
   return (

@@ -164,18 +164,33 @@ function createInspector(): Inspector {
   // selector or value cannot open a comment, string or block that swallows
   // later rules or styles the page; it is dropped instead.
   const scratch = new CSSStyleSheet();
+  const serialized = new Map<string, string>();
   function contained(selector: string, body: string) {
-    try {
-      scratch.replaceSync(`${selector} { ${body} }`);
-    } catch {
-      return "";
+    const key = `${selector}\u0000${body}`;
+    let css = serialized.get(key);
+    if (css === undefined) {
+      try {
+        scratch.replaceSync(`${selector} { ${body} }`);
+        const [rule, ...rest] = scratch.cssRules;
+        css = rule instanceof CSSStyleRule && !rest.length ? rule.cssText : "";
+      } catch {
+        css = "";
+      }
+      // Editor drafts add one entry per keystroke; bound the cache.
+      if (serialized.size > 500) serialized.clear();
+      serialized.set(key, css);
     }
-    const [rule, ...rest] = scratch.cssRules;
-    return rule instanceof CSSStyleRule && !rest.length ? rule.cssText : "";
+    return css;
   }
+  // Text follows the same containment as styles: a selector the stylesheet
+  // drops must not still rewrite text through a lenient DOM query.
+  const activeRules = () =>
+    (profile.paused ? [] : profile.rules).filter(
+      (rule) => contained(rule.selector, "") !== "",
+    );
   function render() {
     mountStyle();
-    const rules = profile.paused ? [] : profile.rules;
+    const rules = activeRules();
     let css = rules
       .filter((rule) => rule.kind === "edit")
       .map((rule) => contained(rule.selector, declarations(rule.styles ?? {})))
@@ -961,7 +976,7 @@ function createInspector(): Inspector {
     )
       if (
         textEdits.apply(
-          profile.paused ? [] : profile.rules,
+          activeRules(),
           editor.target?.isConnected &&
             editor.changedText !== undefined &&
             !profile.paused
