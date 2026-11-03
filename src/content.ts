@@ -588,7 +588,8 @@ function createInspector(): Inspector {
   }
   function lockEdit() {
     if (!selected || busy || editor.target) return;
-    const existing = [...profile.rules].reverse().find((rule) => {
+    // A stored selector the stylesheet drops cannot own the new edit.
+    const existing = [...activeRules()].reverse().find((rule) => {
       if (rule.kind !== "edit") return false;
       try {
         const matches = document.querySelectorAll(rule.selector);
