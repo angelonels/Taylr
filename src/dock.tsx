@@ -244,6 +244,32 @@ function Dock({
             <span>Undo</span>
           </Tool>
           <Tool
+            id="dark-mode"
+            label="Dark mode"
+            aria-pressed={!!state.profile.darkMode}
+            aria-busy={state.themeStatus === "applying"}
+            // aria-disabled keeps keyboard focus through a slow save; the
+            // inspector ignores toggles while busy.
+            aria-disabled={state.busy || !!state.profile.paused}
+            disabled={!!state.profile.paused}
+            onClick={() => void inspector.setDarkMode(!state.profile.darkMode)}
+          >
+            <Icon name="moon" />
+            <span>Dark mode</span>
+            <span className="count">
+              {state.profile.paused
+                ? "Paused"
+                : {
+                    off: "Off",
+                    on: "On",
+                    applying: "Applying…",
+                    "forced-colors": "System colors",
+                    external: "Other theme",
+                    error: "Error",
+                  }[state.themeStatus]}
+            </span>
+          </Tool>
+          <Tool
             id="rules-toggle"
             ref={rulesRef}
             label="Edits"
@@ -308,7 +334,7 @@ function Dock({
               <h2>{state.profile.paused ? "Site paused" : "Site active"}</h2>
               <p className="empty">
                 {state.profile.paused
-                  ? "Taylr stops editing and hiding here. Saved edits are kept."
+                  ? "Taylr stops editing, hiding and recoloring here. Saved edits are kept."
                   : "Pause this site to restore its appearance and stop selection."}
               </p>
               <Button
@@ -463,6 +489,8 @@ if (inspector) {
       "all:initial!important;position:fixed!important;inset:0!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;max-width:none!important;max-height:none!important;width:auto!important;height:auto!important;pointer-events:none!important;overflow:visible!important;z-index:2147483647!important;";
     const root = host.attachShadow({ mode: "open" });
     const stylesheet = document.createElement("style");
+    // Keep our isolated operational UI outside the page recoloring engine.
+    stylesheet.className = "darkreader";
     stylesheet.textContent = css;
     root.append(stylesheet);
     const mount = document.createElement("div");

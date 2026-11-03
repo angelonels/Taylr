@@ -42,6 +42,20 @@ Previews show actual native browser pixels. The full screenshot is transient; on
 
 Images retain source detail within 1024 × 768 pixels and approximately 256KiB. A canvas displays decoded pixels under restrictive site image CSP. Private previews follow private-rule storage. Expanded previews support keyboard inspection. See [capture rationale](research/component-previews.md).
 
+## Dark mode
+
+Dark mode is an explicit Site profile flag, off by default. The single writer and ordered profile broadcasts own it alongside edits, Hide rules and Pause; regular and private storage stay separate. Pause turns off editing, hiding and recoloring while keeping every request. Forced colors temporarily disables recoloring without changing the saved request. Toggling gives immediate feedback and adds no page-wide color animation.
+
+Dark Reader's pinned MIT engine supplies role-aware dynamic CSS. It is bundled locally and injected only after a saved dark-mode request, so the picker stays small and the theme bundle loads separately. No remote code, downloaded site-fix feed, screenshot analysis, global inversion filter or custom per-node color compiler is introduced.
+
+The embedded API normally wraps Chrome messaging and loses Promise return values. A lexical vendor bus at build time isolates it from Taylr's IPC. Two more guarded adaptations finish shadow inversion-style cleanup and reject updates from destroyed stylesheet managers, which otherwise let a delayed DOM-ready callback recreate styles after Off (reproduced on Google Maps). Upgrades must review these guards and rerun lifecycle acceptance. See the [engine decision and sources](research/dark-mode.md).
+
+Cross-origin CSS fetches require an active saved request, a top-frame extension sender and granted HTTP/HTTPS host access. They omit credentials, reject non-CSS types and every redirect before following it, time out after eight seconds and cap decoded input at two MiB. Images and fonts never pass through this bridge. Media pixels and canvas/WebGL keep their native colors.
+
+Small bundled CSS exceptions keep text contrast on observed saturated brand surfaces. On Apple Maps only, an explicit On temporarily replaces its native `darkreader-lock` meta with a placeholder and restores the same node on Off, Pause or forced colors. Another Dark Reader instance is left in control. An unpacked build can pair new injected files with an older running worker; unanswered messages then ask the user to reload Taylr in Chrome's extension settings before refreshing the page.
+
 ## Verification
 
 E2E runs own disposable Chromium, temporary profiles and browser-owned fixtures. Evidence fingerprints distinguish build, harness, contract and environment. Public-site coverage requires the exact declared component and all six checkpoints; blocks remain unverified. See [testing](testing.md) and [the matrix](site-test-matrix.md).
+
+CI verifies pull requests and pushes to `main`, not every feature-branch push, so one update never downloads the same browser dependencies twice. The hosted runner's Azure HTTP package mirror once stalled for minutes on a font archive, so CI switches only that mirror to Ubuntu's HTTPS archive before installing browser dependencies; signatures and the dependency set are unchanged.

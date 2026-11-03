@@ -1,4 +1,5 @@
 import { storeProfile } from "./background/store-profile";
+import { registerTheme } from "./background/theme";
 import { validStyles } from "./edit-properties";
 import { openTools } from "./background/open-tools";
 import {
@@ -28,167 +29,195 @@ chrome.runtime.onMessage.addListener((message: Request, sender, reply) => {
       "remove",
       "restore",
       "set-paused",
+      "set-dark-mode",
     ].includes(message.type)
   )
     return;
-  pending = pending.then(async () => {
+  const respond = (result: unknown) => {
+    // The originating document may close while a write is queued. Losing its
+    // reply must never poison the shared writer for every other tab.
     try {
-      const url = new URL(message.origin);
-      if (
-        !["https:", "http:"].includes(url.protocol) ||
-        url.origin !== message.origin
-      )
-        throw new Error("Open a website to use Taylr.");
-      if (
-        sender.tab &&
-        !sender.url?.startsWith(chrome.runtime.getURL("")) &&
-        new URL(sender.url!).origin !== message.origin
-      )
-        throw new Error("This page cannot change another site.");
-      const key = storageKey(message.origin);
-      const stored = (await chrome.storage[storageArea()].get(key))[key] as
-        SiteProfile | undefined;
-      const profile: SiteProfile = stored ?? {
-        version: 1,
-        origin: message.origin,
-        rules: [],
-      };
-      let createdRuleId: string | undefined;
-      let savedRule: Rule | undefined, previousRule: Rule | undefined;
-      if (message.type === "edit") {
-        if (profile.paused) throw new Error("Resume this site before editing.");
+      reply(result);
+    } catch {
+      /* Disconnected port. */
+    }
+  };
+  pending = pending
+    .catch(() => {})
+    .then(async () => {
+      try {
+        const url = new URL(message.origin);
         if (
-          !validStyles(message.styles) ||
-          typeof message.selector !== "string" ||
-          message.selector.length > 4096 ||
-          /[{}]/.test(message.selector) ||
-          typeof message.label !== "string" ||
-          (message.text !== undefined &&
-            (typeof message.text !== "string" || message.text.length > 5000))
+          !["https:", "http:"].includes(url.protocol) ||
+          url.origin !== message.origin
         )
-          throw new Error("Invalid element changes.");
-        const existing = profile.rules.find(
-          (rule) => rule.kind === "edit" && rule.selector === message.selector,
-        );
-        previousRule = existing ? structuredClone(existing) : undefined;
-        savedRule = {
-          id: existing?.id ?? crypto.randomUUID(),
-          kind: "edit",
-          selector: message.selector,
-          label: message.label.slice(0, 120),
-          styles: { ...existing?.styles, ...message.styles },
-          ...(existing?.text !== undefined ? { text: existing.text } : {}),
-          ...(message.text !== undefined ? { text: message.text } : {}),
-          revision: crypto.randomUUID(),
-          createdAt: existing?.createdAt ?? Date.now(),
+          throw new Error("Open a website to use Taylr.");
+        if (
+          sender.tab &&
+          !sender.url?.startsWith(chrome.runtime.getURL("")) &&
+          new URL(sender.url!).origin !== message.origin
+        )
+          throw new Error("This page cannot change another site.");
+        const key = storageKey(message.origin);
+        const stored = (await chrome.storage[storageArea()].get(key))[key] as
+          SiteProfile | undefined;
+        const profile: SiteProfile = stored ?? {
+          version: 1,
+          origin: message.origin,
+          rules: [],
         };
-        profile.rules = [
-          ...profile.rules.filter((rule) => rule.id !== existing?.id),
-          savedRule,
-        ];
-      }
-      if (message.type === "undo-edit") {
-        const current = profile.rules.find((rule) => rule.id === message.id);
-        if (
-          !current ||
-          current.kind !== "edit" ||
-          current.revision !== message.revision
-        )
-          throw new RequestError(
-            "This rule changed in another tab. Use Edits to restore it.",
-            "revision-conflict",
-          );
-        if (
-          message.before &&
-          (message.before.id !== current.id ||
-            message.before.kind !== "edit" ||
-            message.before.selector !== current.selector ||
-            !validStyles(message.before.styles) ||
-            (message.before.text !== undefined &&
-              (typeof message.before.text !== "string" ||
-                message.before.text.length > 5000)))
-        )
-          throw new Error("Invalid rule history.");
-        profile.rules = profile.rules.filter((rule) => rule.id !== message.id);
-        if (message.before) profile.rules.push(message.before);
-      }
-      if (message.type === "set-paused") {
-        if (typeof message.paused !== "boolean")
-          throw new Error("Invalid site setting.");
-        profile.paused = message.paused;
-      }
-      if (message.type === "add") {
-        if (profile.paused)
-          throw new Error("Resume this site before hiding elements.");
-        if (
-          typeof message.selector !== "string" ||
-          message.selector.length > 4096 ||
-          /[{}]/.test(message.selector) ||
-          typeof message.label !== "string"
-        )
-          throw new Error(
-            "This element cannot be saved. Try a surrounding element.",
-          );
-        if (
-          !profile.rules.some(
-            (rule) =>
-              rule.kind !== "edit" && rule.selector === message.selector,
+        let createdRuleId: string | undefined;
+        let savedRule: Rule | undefined, previousRule: Rule | undefined;
+        if (message.type === "edit") {
+          if (profile.paused)
+            throw new Error("Resume this site before editing.");
+          if (
+            !validStyles(message.styles) ||
+            typeof message.selector !== "string" ||
+            message.selector.length > 4096 ||
+            /[{}]/.test(message.selector) ||
+            typeof message.label !== "string" ||
+            (message.text !== undefined &&
+              (typeof message.text !== "string" || message.text.length > 5000))
           )
-        ) {
-          createdRuleId = crypto.randomUUID();
-          profile.rules.push({
-            id: createdRuleId,
+            throw new Error("Invalid element changes.");
+          const existing = profile.rules.find(
+            (rule) =>
+              rule.kind === "edit" && rule.selector === message.selector,
+          );
+          previousRule = existing ? structuredClone(existing) : undefined;
+          savedRule = {
+            id: existing?.id ?? crypto.randomUUID(),
+            kind: "edit",
             selector: message.selector,
             label: message.label.slice(0, 120),
-            createdAt: Date.now(),
-            ...(validSummary(message.summary)
-              ? { summary: message.summary }
-              : {}),
-            ...(validPreview(message.preview)
-              ? { preview: message.preview }
-              : {}),
-          });
+            styles: { ...existing?.styles, ...message.styles },
+            ...(existing?.text !== undefined ? { text: existing.text } : {}),
+            ...(message.text !== undefined ? { text: message.text } : {}),
+            revision: crypto.randomUUID(),
+            createdAt: existing?.createdAt ?? Date.now(),
+          };
+          profile.rules = [
+            ...profile.rules.filter((rule) => rule.id !== existing?.id),
+            savedRule,
+          ];
         }
-      }
-      if (message.type === "remove")
-        profile.rules = profile.rules.filter((rule) => rule.id !== message.id);
-      if (message.type === "restore") profile.rules = [];
-      if (message.type !== "get") {
-        // Permission/setup failure must leave the persisted pause state intact.
-        if (message.type === "set-paused" && !message.paused)
-          await registerOrigin(message.origin);
-        await storeProfile(key, profile, createdRuleId);
-        const tabs = await chrome.tabs.query({ url: `${message.origin}/*` });
-        await Promise.allSettled(
-          tabs
-            .filter(
-              (tab) =>
-                tab.incognito === chrome.extension.inIncognitoContext && tab.id,
+        if (message.type === "undo-edit") {
+          const current = profile.rules.find((rule) => rule.id === message.id);
+          if (
+            !current ||
+            current.kind !== "edit" ||
+            current.revision !== message.revision
+          )
+            throw new RequestError(
+              "This rule changed in another tab. Use Edits to restore it.",
+              "revision-conflict",
+            );
+          if (
+            message.before &&
+            (message.before.id !== current.id ||
+              message.before.kind !== "edit" ||
+              message.before.selector !== current.selector ||
+              !validStyles(message.before.styles) ||
+              (message.before.text !== undefined &&
+                (typeof message.before.text !== "string" ||
+                  message.before.text.length > 5000)))
+          )
+            throw new Error("Invalid rule history.");
+          profile.rules = profile.rules.filter(
+            (rule) => rule.id !== message.id,
+          );
+          if (message.before) profile.rules.push(message.before);
+        }
+        if (message.type === "set-dark-mode") {
+          if (typeof message.darkMode !== "boolean")
+            throw new Error("Invalid site setting.");
+          profile.darkMode = message.darkMode;
+        }
+        if (message.type === "set-paused") {
+          if (typeof message.paused !== "boolean")
+            throw new Error("Invalid site setting.");
+          profile.paused = message.paused;
+        }
+        if (message.type === "add") {
+          if (profile.paused)
+            throw new Error("Resume this site before hiding elements.");
+          if (
+            typeof message.selector !== "string" ||
+            message.selector.length > 4096 ||
+            /[{}]/.test(message.selector) ||
+            typeof message.label !== "string"
+          )
+            throw new Error(
+              "This element cannot be saved. Try a surrounding element.",
+            );
+          if (
+            !profile.rules.some(
+              (rule) =>
+                rule.kind !== "edit" && rule.selector === message.selector,
             )
-            .map(async (tab) => {
-              // Ensure a controller exists even if earlier setup failed, then
-              // resume saved rules in this tab as well as mounted panels.
-              if (message.type === "set-paused" && !message.paused)
-                await chrome.scripting.executeScript({
-                  target: { tabId: tab.id! },
-                  files: ["content.js"],
+          ) {
+            createdRuleId = crypto.randomUUID();
+            profile.rules.push({
+              id: createdRuleId,
+              selector: message.selector,
+              label: message.label.slice(0, 120),
+              createdAt: Date.now(),
+              ...(validSummary(message.summary)
+                ? { summary: message.summary }
+                : {}),
+              ...(validPreview(message.preview)
+                ? { preview: message.preview }
+                : {}),
+            });
+          }
+        }
+        if (message.type === "remove")
+          profile.rules = profile.rules.filter(
+            (rule) => rule.id !== message.id,
+          );
+        if (message.type === "restore") profile.rules = [];
+        if (message.type !== "get") {
+          // Permission/setup failure must leave the persisted state intact.
+          const activating =
+            (message.type === "set-paused" && !message.paused) ||
+            (message.type === "set-dark-mode" && message.darkMode);
+          if (activating) await registerOrigin(message.origin);
+          await storeProfile(key, profile, createdRuleId);
+          const tabs = await chrome.tabs.query({ url: `${message.origin}/*` });
+          await Promise.allSettled(
+            tabs
+              .filter(
+                (tab) =>
+                  tab.incognito === chrome.extension.inIncognitoContext &&
+                  tab.id,
+              )
+              .map(async (tab) => {
+                // Ensure a controller exists even if earlier setup failed, then
+                // resume saved rules in this tab as well as mounted panels.
+                if (activating)
+                  await chrome.scripting.executeScript({
+                    target: { tabId: tab.id! },
+                    files: ["content.js"],
+                  });
+                await chrome.tabs.sendMessage(tab.id!, {
+                  type: "profile",
+                  profile,
                 });
-              await chrome.tabs.sendMessage(tab.id!, {
-                type: "profile",
-                profile,
-              });
-            }),
-        );
+              }),
+          );
+        }
+        respond({ profile, createdRuleId, savedRule, previousRule });
+      } catch (error) {
+        respond({
+          error:
+            error instanceof Error
+              ? error.message
+              : "Could not save. Try again.",
+          ...(error instanceof RequestError ? { code: error.code } : {}),
+        });
       }
-      reply({ profile, createdRuleId, savedRule, previousRule });
-    } catch (error) {
-      reply({
-        error:
-          error instanceof Error ? error.message : "Could not save. Try again.",
-        ...(error instanceof RequestError ? { code: error.code } : {}),
-      });
-    }
-  });
+    });
   return true;
 });
 
@@ -338,3 +367,4 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
 });
 
 registerPreviewCapture();
+registerTheme();

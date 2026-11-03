@@ -887,7 +887,11 @@
         "keep": ".dcg-grapher",
         "purpose": "Target the editable expression list without entering an expression or changing the graph."
       }
-    ]
+    ],
+    "dark": {
+      "minTextSamples": 2,
+      "reason": "The initial canvas workspace has only two stable visible text labels; component and media contracts remain required."
+    }
   },
   {
     "id": "canva",
@@ -1243,6 +1247,10 @@
     "invariant": {
       "selector": "[data-testid=\"tla-main-menu\"]",
       "attribute": "aria-expanded"
+    },
+    "dark": {
+      "minTextSamples": 2,
+      "reason": "The initial canvas workspace has only two stable visible text labels; component and media contracts remain required."
     }
   },
   {
@@ -2563,6 +2571,76 @@
         "target": "#talks",
         "keep": "#getting-started",
         "purpose": "Hide the Talks section without playing any video."
+      }
+    ]
+  },
+  {
+    "id": "hackernews",
+    "name": "Hacker News",
+    "category": "Legacy tables · repeated story rows and links",
+    "url": "https://news.ycombinator.com/",
+    "status": "verified: 3/3 Hide component contracts; 2026-10-23 dark-mode branch",
+    "notes": "Dark-mode coverage adds sampled text contrast, theme reversal, media filters and reload persistence.",
+    "components": [
+      {
+        "id": "primary",
+        "component": "Story row",
+        "target": "tr.athing",
+        "keep": "tr.athing",
+        "purpose": "Hide and restore the story row without activating links or changing independent content.",
+        "keepIndex": 1,
+        "targetIndex": 0,
+        "identity": {
+          "selector": ".titleline > a",
+          "attribute": "href"
+        }
+      },
+      {
+        "id": "brand",
+        "component": "Header brand",
+        "target": ".hnname",
+        "keep": "tr.athing",
+        "purpose": "Hide and restore the header brand without activating links or changing independent content.",
+        "keepIndex": 0
+      },
+      {
+        "id": "more",
+        "component": "Pagination link",
+        "target": ".morelink",
+        "keep": "tr.athing",
+        "purpose": "Hide and restore the pagination link without activating links or changing independent content.",
+        "keepIndex": 0
+      }
+    ]
+  },
+  {
+    "id": "gutenberg",
+    "name": "Project Gutenberg",
+    "category": "Book catalog · long summary, downloads and metadata table",
+    "url": "https://www.gutenberg.org/ebooks/84",
+    "status": "verified: 3/3 Hide component contracts; 2026-10-23 dark-mode branch",
+    "notes": "Dark-mode coverage adds sampled text contrast, theme reversal, media filters and reload persistence.",
+    "components": [
+      {
+        "id": "primary",
+        "component": "Book title",
+        "target": "#book_title",
+        "keep": ".download-section",
+        "purpose": "Hide and restore the book title without activating links or changing independent content."
+      },
+      {
+        "id": "downloads",
+        "component": "Download formats",
+        "target": ".download-section",
+        "keep": "#book_title",
+        "purpose": "Hide and restore the download formats without activating links or changing independent content."
+      },
+      {
+        "id": "metadata",
+        "component": "Book metadata",
+        "target": "#about_book_table",
+        "keep": "#book_title",
+        "purpose": "Hide and restore the book metadata without activating links or changing independent content."
       }
     ]
   }

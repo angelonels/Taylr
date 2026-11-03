@@ -29,6 +29,7 @@ export interface SiteProfile {
   origin: string;
   rules: Rule[];
   paused?: boolean;
+  darkMode?: boolean;
 }
 export type Request =
   | {
@@ -47,6 +48,7 @@ export type Request =
       before?: Rule;
     }
   | { type: "get" | "restore"; origin: string }
+  | { type: "set-dark-mode"; origin: string; darkMode: boolean }
   | { type: "set-paused"; origin: string; paused: boolean }
   | {
       type: "add";
@@ -78,12 +80,15 @@ export const storageArea = () =>
   chrome.extension.inIncognitoContext ? "session" : "local";
 export const storageKey = (origin: string) =>
   `${storageArea() === "session" ? "private-site" : "site"}:${origin}`;
+// A loaded unpacked worker can predate the files now injected into a page.
+// Refreshing the page cannot teach that worker the new message vocabulary.
+export const extensionReloadMessage =
+  "Reload Taylr in Chrome’s extension settings, then reload this page.";
 export async function requestResult(message: Request) {
   const result: Response = await chrome.runtime.sendMessage(message);
   if (!result || result.error)
     throw new RequestError(
-      result?.error ||
-        "Taylr could not connect. Reload the page and try again.",
+      result?.error || extensionReloadMessage,
       result?.error ? result.code : undefined,
     );
   return result as {

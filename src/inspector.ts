@@ -1,6 +1,9 @@
 import type { EditState } from "./element-editor";
 import type { SiteProfile } from "./model";
 
+export type ThemeStatus =
+  "off" | "on" | "applying" | "forced-colors" | "external" | "error";
+
 export interface InspectorState {
   open: boolean;
   mode: "hide" | "edit";
@@ -8,6 +11,7 @@ export interface InspectorState {
   editorDirty: boolean;
   picking: boolean;
   busy: boolean;
+  themeStatus: ThemeStatus;
   profile: SiteProfile;
   canUndo: boolean;
   hasHidden: boolean;
@@ -34,6 +38,7 @@ export interface Inspector {
   parent(): void;
   child(): void;
   restore(id?: string): Promise<void>;
+  setDarkMode(enabled: boolean): Promise<void>;
   setPaused(paused: boolean): Promise<void>;
   openAccessSettings(): Promise<void>;
 }
