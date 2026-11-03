@@ -10,8 +10,19 @@ const pending = new Map<string, Promise<unknown>>();
 // itself local keeps its local stylesheets. Names resolving to private
 // addresses (DNS rebinding) are outside what a hostname check can see.
 function privateHost(hostname: string) {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (/(^|\.)(localhost|local|internal)$/.test(host)) return true;
+  // One trailing dot still names the same host ("localhost.").
+  const host = hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "");
+  if (host.includes(":"))
+    return (
+      host === "::" ||
+      host === "::1" ||
+      host.startsWith("::ffff:") ||
+      /^f[cd]/.test(host) ||
+      /^fe[89ab]/.test(host)
+    );
   const ipv4 = host.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
   if (ipv4) {
     const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
@@ -25,12 +36,10 @@ function privateHost(hostname: string) {
       (a === 192 && b === 168)
     );
   }
+  // Single-label names and reserved local suffixes reach intranets.
   return (
-    host === "::" ||
-    host === "::1" ||
-    host.startsWith("::ffff:") ||
-    /^f[cd]/.test(host) ||
-    /^fe[89ab]/.test(host)
+    !host.includes(".") ||
+    /\.(localhost|local|internal|lan|home\.arpa)$/.test(host)
   );
 }
 export function registerTheme() {
