@@ -160,22 +160,35 @@ function createInspector(): Inspector {
     render();
     publish();
   }
+  // Each rule is parsed alone and re-serialized by the browser. A malformed
+  // selector or value cannot open a comment, string or block that swallows
+  // later rules or styles the page; it is dropped instead.
+  const scratch = new CSSStyleSheet();
+  function contained(selector: string, body: string) {
+    try {
+      scratch.replaceSync(`${selector} { ${body} }`);
+    } catch {
+      return "";
+    }
+    const [rule, ...rest] = scratch.cssRules;
+    return rule instanceof CSSStyleRule && !rest.length ? rule.cssText : "";
+  }
   function render() {
     mountStyle();
     const rules = profile.paused ? [] : profile.rules;
     let css = rules
       .filter((rule) => rule.kind === "edit")
-      .map((rule) => `${rule.selector} { ${declarations(rule.styles ?? {})} }`)
+      .map((rule) => contained(rule.selector, declarations(rule.styles ?? {})))
       .join("\n");
     if (editor.target?.isConnected && !profile.paused)
-      css += `\n${editor.selector} { ${declarations(editor.changes)} }`;
+      css += `\n${contained(editor.selector, declarations(editor.changes))}`;
     const hidden = rules
       .filter((rule) => rule.kind !== "edit")
-      .map((rule) => `${rule.selector} { display: none !important; }`)
+      .map((rule) => contained(rule.selector, "display: none !important;"))
       .join("\n");
     // Important declarations in a layer outrank unlayered edits, even when an
     // older saved display rule has a more specific selector or was saved later.
-    if (hidden) css += `\n@layer taylr-visibility { ${hidden} }`;
+    if (hidden.trim()) css += `\n@layer taylr-visibility { ${hidden} }`;
     textEdits.apply(
       rules,
       editor.target?.isConnected &&

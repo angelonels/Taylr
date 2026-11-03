@@ -80,7 +80,10 @@ export async function capturePreview(
   hosts: (HTMLElement | null)[],
 ) {
   listen();
-  const id = crypto.randomUUID();
+  // randomUUID exists only in secure contexts; plain HTTP sites still Hide.
+  const id = [...crypto.getRandomValues(new Uint32Array(4))]
+    .map((part) => part.toString(36))
+    .join("-");
   const geometry = () =>
     JSON.stringify([
       element.getBoundingClientRect().toJSON(),

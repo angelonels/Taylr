@@ -116,7 +116,9 @@ export function validStyles(input: unknown): input is StylePatch {
           value,
         )
       );
-    if (field.kind === "font") return /^[\w\s,"'-]+$/.test(value);
+    // Quotes must pair so a family name cannot open an unterminated string.
+    if (field.kind === "font")
+      return /^(?:[\w\s,-]|"[\w\s,-]*"|'[\w\s,-]*')+$/.test(value);
     if (field.kind === "color")
       return /^(?:#[\da-f]{3,8}|[a-z]+|(?:rgba?|hsla?|oklch|oklab|lab|lch|color)\([\w\s.,%+/-]+\))$/i.test(
         value,
