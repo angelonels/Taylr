@@ -963,8 +963,12 @@ function createInspector(): Inspector {
       }
   }
   const textObserver = new MutationObserver(reapplyText);
-  // The last parsed element closes without a further mutation.
-  document.addEventListener("DOMContentLoaded", reapplyText, { once: true });
+  // The last parsed element closes without a further mutation. Window capture
+  // runs before page listeners can stop propagation.
+  window.addEventListener("DOMContentLoaded", reapplyText, {
+    capture: true,
+    once: true,
+  });
   textObserver.observe(document, {
     childList: true,
     subtree: true,

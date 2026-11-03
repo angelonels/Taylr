@@ -61,9 +61,12 @@ for (const last of [false, true])
       const streamed = await context.newPage();
       const navigation = streamed.goto(`${origin}/streamed`);
       // render() mounts the rules sheet and applies text in the same task, so
-      // the saved edit has reached the heading while the parser is inside it.
-      await streamed.waitForFunction(() =>
-        document.querySelector('style[data-taylr="rules"]'),
+      // the saved edit has reached the open heading mid-parse.
+      await streamed.waitForFunction(
+        () =>
+          document.readyState === "loading" &&
+          document.querySelector("#selected") &&
+          document.querySelector('style[data-taylr="rules"]'),
       );
       release();
       await navigation;
