@@ -4,6 +4,35 @@ import type { ThemeStatus } from "../inspector";
 // Pin each operation to its original document and serialize rapid toggles. Read
 // the saved flag inside the queue, so an older request cannot resurrect a theme.
 const pending = new Map<string, Promise<unknown>>();
+// The worker's fetch skips the browser's private-network checks, and the
+// recolored result is readable by the page. A public page must not reach
+// literal private, loopback or link-local hosts through it; a page that is
+// itself local keeps its local stylesheets. Names resolving to private
+// addresses (DNS rebinding) are outside what a hostname check can see.
+function privateHost(hostname: string) {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (/(^|\.)(localhost|local|internal)$/.test(host)) return true;
+  const ipv4 = host.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
+  if (ipv4) {
+    const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168)
+    );
+  }
+  return (
+    host === "::" ||
+    host === "::1" ||
+    host.startsWith("::ffff:") ||
+    /^f[cd]/.test(host) ||
+    /^fe[89ab]/.test(host)
+  );
+}
 export function registerTheme() {
   chrome.runtime.onMessage.addListener((message, sender, reply) => {
     if (!["theme-sync", "theme-css"].includes(message?.type)) return;
@@ -33,6 +62,8 @@ export function registerTheme() {
             !["http:", "https:"].includes(url.protocol) ||
             url.username ||
             url.password ||
+            (privateHost(url.hostname) &&
+              !privateHost(new URL(origin).hostname)) ||
             !(await chrome.permissions.contains({
               origins: [`${url.origin}/*`],
             }))

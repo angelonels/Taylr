@@ -57,7 +57,7 @@
   @apply flex h-auto w-[280px] flex-col;
 }
 .dock[data-compact="true"] .tools {
-  @apply grid shrink-0 grid-cols-5 border-0 p-2;
+  @apply grid shrink-0 grid-cols-3 border-0 p-2;
 }
 .dock[data-compact="true"] .tools > button {
   @apply min-h-[52px];
@@ -394,15 +394,16 @@ kbd {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .tools > button:not(:disabled):hover::before {
+  .tools > button:not(:disabled):not([aria-disabled="true"]):hover::before {
     opacity: 1;
   }
-  button:not(:disabled):hover {
+  button:not(:disabled):not([aria-disabled="true"]):hover {
     @apply bg-white/10;
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .dock:not([data-keyboard="true"]) button:not(:disabled):active {
+  .dock:not([data-keyboard="true"])
+    button:not(:disabled):not([aria-disabled="true"]):active {
     transform: scale(0.97);
   }
   .dock:not([data-keyboard="true"]) .details {

@@ -91,9 +91,16 @@ chrome.permissions.request = async permissions => (await chrome.permissions.cont
     // The fixture belongs to this disposable browser, not a shared Vite port.
     // Later scenario routes take precedence, allowing explicit fault injection.
     await context.route(
-      /^http:\/\/127\.0\.0\.1:5173\/tests\/fixture\.html(?:\?.*)?$/,
-      (route) =>
-        route.fulfill({ path: "tests/fixture.html", contentType: "text/html" }),
+      /^http:\/\/127\.0\.0\.1:5173\/tests\/((?:dark-)?fixture\.(?:html|css))(?:\?.*)?$/,
+      (route) => {
+        const [, file] = new URL(route.request().url()).pathname.split(
+          "/tests/",
+        );
+        return route.fulfill({
+          path: `tests/${file}`,
+          contentType: file.endsWith(".css") ? "text/css" : "text/html",
+        });
+      },
     );
     // Screencast frames cost about a sixth of local suite time on a busy CPU.
     // Local traces keep DOM snapshots and explicit PNG evidence; live runs keep
