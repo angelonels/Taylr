@@ -8,6 +8,7 @@ npm run test:e2e                 # controlled acceptance only
 npm run test:canary -- --workers=2
 npm run test:live -- --workers=2
 npm run test:compare -- --workers=1
+npm run test:dark                # dark-mode lifecycle on every catalog site
 ```
 
 The wrapper builds once and checks the bundled browser. Local runs fulfill their fixture bytes inside each disposable browser, including query variants; public-site runs do not depend on a development server. Tests launch disposable Playwright Chromium with temporary profiles; they never attach to personal browser sessions or reload an installed extension. Keep browser concurrency bounded by measured throughput and memory pressure; more browsers can make the suite slower. Workers default to the CPU count, capped at one per 2 GiB of memory; both respect container limits. `TAYLR_WORKERS` overrides it with a count or a percentage of cores. On 4 CPUs, 2 workers took 13.5 minutes and 4 took 10.9 with the CPU 92% busy, so the suite is CPU-bound beyond one worker per core. Local traces omit screencast frames, which cost about a sixth of suite time; they keep DOM snapshots, and tests still save explicit PNG evidence. `TAYLR_TRACE_SCREENSHOTS=1` restores frames; live runs always keep them. Test extension copies dereference build symlinks before applying fixture-only patches, so generated production files stay unchanged.
@@ -20,7 +21,7 @@ Use local acceptance for ordinary edits, canaries for cross-page changes, and th
 | 2    | External access blocks left coverage incomplete                         |
 | 1    | Product, contract, environment or harness error; missing/stale evidence |
 
-These exit meanings apply to catalog contracts. Controlled acceptance reports its two opt-in diagnostics as skipped when disabled.
+These exit meanings apply to catalog contracts. Controlled acceptance reports its two opt-in diagnostics, and one public dark-mode case per catalog site, as skipped unless enabled.
 
 Failures and incomplete evidence take precedence over external blocks when determining the exit code.
 
@@ -43,6 +44,16 @@ Verify a committed Save through exact storage and rendered CSS, then start the n
 Native focus and layout can change while using the panel. Reset/Cancel must remove draft declarations; retained content must stay visible and match no injected rule. Saved values remain strict. Restore compares all properties with each document’s paused state, accepting changed native inline geometry only when its new absolute pixel declaration independently determines the expected value. Negative controls reject leaked selectors and retained overrides.
 
 The production-permission fixture retains HTTP/HTTPS grants and rejects runtime permission requests. The test action bridge invokes the real handler but does not establish Chrome’s native activeTab gesture. Native permission-dialog automation remains an opt-in unresolved diagnostic; LeetCode access smoke is also opt-in and does not prove challenge-protected component coverage.
+
+## Dark-mode acceptance
+
+`npm run test:dark` attempts one theme lifecycle on every catalog site. `TAYLR_SITES` selects specific site IDs; unknown IDs are rejected. Every case uses the generated production host grant in a temporary browser and retains before/dark/restored viewport screenshots, a trace, environment metadata, source/build fingerprint, sampled values and a structured result. `dark-results.json` summarizes the selected run. Missing records are unrun; mixed builds/harnesses are rejected. The manual CI scope `dark` uses this same command path.
+
+A theme case first validates every declared component target. It measures at most 40 visible text nodes, follows the same original node references, checks applicable foreground/background contrast after at least eight seconds of observation, completed stylesheet/extension-worker response bodies, a one-second resource quiet window and three stable observations for the declared minimum number of samples, retains original media filters, requires components to remain visible, rejects a root inversion filter, restores sampled colors on Off, and verifies automatic application after reload. Canvas workspaces with only two text labels declare that minimum explicitly; their three component contracts remain required.
+
+Contrast applies only to opaque foregrounds on uniform solid backgrounds. Gradients, photographs, blend effects and alpha foregrounds are not given invented contrast ratios. A nearer opaque background shields text from ancestor background images, while ancestor opacity/filter/blend effects still matter. A surviving readable baseline sample becoming unmeasurable fails instead of disappearing from coverage. All qualifying samples are checked for readable contrast even when live quote colors keep changing; the settling quota does not limit readability checks. Closed-details content is excluded with Chromium's visibility check. Removed nodes are recorded as excluded media samples. For restoration, unchanged surviving content must recover its colors; surviving content with identical original colors also counts even if benign native state such as an upsell height or hydration class changed. Inline style changes do not exempt a failed color restoration. Other host-mutated class/text samples are recorded as excluded. When any sample changed under the theme, at least one changed sample must be restored; untouched samples alone cannot establish reversal. Off also checks that engine styles are gone from the document and open shadow roots, excluding Taylr’s own UI roots. This is bounded regression sampling, not a WCAG certificate or proof of every pixel on the site.
+
+The deterministic dark fixture separately checks >=4.5:1 contrast on white, layered, important, CDN-styled and already-dark surfaces; original photo/canvas interior pixels; form drafts; unchanged panel branding; dynamic DOM and open shadow styles; keyboard and rapid toggles; native messaging with Hide/Restore; cross-tab state, Pause, reload, forced colors, engine failure, preexisting same-origin tabs, denied registration, rejected redirects, invalid MIME/size/credentials/scheme, and observation of a deliberately delayed stylesheet response body. A native-lock fixture verifies Apple Maps metadata is restored on Off. An older-worker fixture restricts the disposable worker's message vocabulary to simulate a rebuild beneath a running unpacked installation: it verifies extension-reload guidance, unchanged Off state, working Hide, and persistent guidance after a website refresh. Tests never reload a personal installed extension.
 
 ## Evidence
 

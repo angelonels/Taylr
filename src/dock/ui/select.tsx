@@ -27,6 +27,10 @@ export function Select({
   const menu = useRef<HTMLDivElement>(null);
   const search = useRef({ text: "", time: 0 });
   const [open, setOpen] = useState(false);
+  // Pressing the trigger light-dismisses this auto popover, and the toggle
+  // event reporting it is asynchronous. A held press or busy CPU can deliver
+  // it before the click, so the click must not read that as "was closed".
+  const press = useRef({ active: false, wasOpen: false, closed: false });
   const values = [
     ...new Set(options.includes(value) ? options : [value, ...options]),
   ].filter(Boolean);
@@ -132,7 +136,21 @@ export function Select({
         aria-controls={`${id}-menu`}
         disabled={disabled}
         className="arc-select"
-        onClick={() => (open ? close() : show())}
+        onPointerDown={() => {
+          press.current = {
+            active: true,
+            wasOpen: !!menu.current?.matches(":popover-open"),
+            closed: false,
+          };
+        }}
+        onClick={(event) => {
+          const { active, wasOpen, closed } = press.current;
+          press.current = { active: false, wasOpen: false, closed: false };
+          // Keyboard clicks have detail 0; a press that never became a click
+          // (dragged off, right-click, canceled touch) must not decide them.
+          if (event.detail > 0 && active ? wasOpen || closed : open) close();
+          else show();
+        }}
         onKeyDown={(event) => {
           if (["ArrowDown", "ArrowUp"].includes(event.key)) {
             event.preventDefault();
@@ -163,7 +181,11 @@ export function Select({
         className="arc-select-menu"
         data-state={open ? "open" : "closed"}
         data-keyboard={instant}
-        onToggle={(event) => setOpen(event.newState === "open")}
+        onToggle={(event) => {
+          if (event.newState === "closed" && press.current.active)
+            press.current.closed = true;
+          setOpen(event.newState === "open");
+        }}
         onKeyDown={key}
         onBlur={(event) => {
           if (

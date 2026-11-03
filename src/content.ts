@@ -1,6 +1,7 @@
 import { ElementEditor, TextEdits } from "./element-editor";
 import { declarations } from "./edit-properties";
 import {
+  extensionReloadMessage,
   request,
   requestResult,
   RequestError,
@@ -9,7 +10,7 @@ import {
 } from "./model";
 import { capturePreview, componentText, summarize } from "./preview";
 import { canSelect, selectorFor } from "./selector";
-import type { Inspector, InspectorState } from "./inspector";
+import type { Inspector, InspectorState, ThemeStatus } from "./inspector";
 import { mountPageOverlay } from "./page-overlay";
 
 if (!window.__taylr) window.__taylr = createInspector();
@@ -17,6 +18,9 @@ if (!window.__taylr) window.__taylr = createInspector();
 function createInspector(): Inspector {
   let profile: SiteProfile = { version: 1, origin: location.origin, rules: [] };
   let profileUpdates = 0;
+  let themeStatus: ThemeStatus = "off";
+  let themeRevision = 0;
+  let themeError = "";
   let open = false;
   let picker: AbortController | null = null;
   let selected: Element | null = null;
@@ -63,7 +67,7 @@ function createInspector(): Inspector {
   highlightHost.style.cssText =
     "all:initial!important;position:fixed!important;inset:0!important;pointer-events:none!important;z-index:2147483646!important;";
   const shadow = highlightHost.attachShadow({ mode: "open" });
-  shadow.innerHTML = `<style>:host{color-scheme:dark}.outline{position:fixed;inset:0 auto auto 0;box-sizing:border-box;border:2px solid #8abdff;background:rgba(10,100,218,.07);box-shadow:0 0 0 1px rgba(9,24,44,.55),0 0 18px rgba(10,100,218,.13);border-radius:6px;pointer-events:none}.outline[hidden]{display:none}</style><div class="outline" hidden></div>`;
+  shadow.innerHTML = `<style class="darkreader">:host{color-scheme:dark}.outline{position:fixed;inset:0 auto auto 0;box-sizing:border-box;border:2px solid #8abdff;background:rgba(10,100,218,.07);box-shadow:0 0 0 1px rgba(9,24,44,.55),0 0 18px rgba(10,100,218,.13);border-radius:6px;pointer-events:none}.outline[hidden]{display:none}</style><div class="outline" hidden></div>`;
   const outline = shadow.querySelector<HTMLElement>(".outline")!;
   const style = document.createElement("style");
   style.dataset.taylr = "rules";
@@ -130,6 +134,7 @@ function createInspector(): Inspector {
       editorDirty: editor.dirty,
       picking: !!picker,
       busy,
+      themeStatus,
       profile,
       hasHidden: sessionIds.length > 0,
       canUndo:
@@ -154,8 +159,43 @@ function createInspector(): Inspector {
     if (document.documentElement && !style.isConnected)
       document.documentElement.append(style);
   }
+  function syncTheme() {
+    const revision = ++themeRevision;
+    themeStatus = profile.darkMode && !profile.paused ? "applying" : "off";
+    publish();
+    void chrome.runtime
+      .sendMessage({ type: "theme-sync" })
+      .then((result) => {
+        if (revision !== themeRevision) return;
+        themeStatus = result?.status ?? "error";
+        const failure =
+          result?.error || (!result?.status ? extensionReloadMessage : "");
+        if (failure) {
+          themeError = failure;
+          status = failure;
+          error = true;
+        } else {
+          if (themeError && status === themeError) {
+            status = "";
+            error = false;
+          }
+          themeError = "";
+        }
+        publish();
+      })
+      .catch(() => {
+        if (revision !== themeRevision) return;
+        themeStatus = "error";
+        themeError = "Could not update dark mode. Reload to try again.";
+        status = themeError;
+        error = true;
+        publish();
+      });
+  }
+  matchMedia("(forced-colors: active)").addEventListener("change", syncTheme);
   function apply(next: SiteProfile) {
     profile = next;
+    syncTheme();
     if (profile.paused) stop();
     render();
     publish();
@@ -413,8 +453,8 @@ function createInspector(): Inspector {
     previousFocus = document.activeElement;
     open = true;
     openRevision++;
-    status = "";
-    error = false;
+    status = themeError;
+    error = !!themeError;
     publish();
   }
   async function start(nextMode: "hide" | "edit" = "hide") {
@@ -847,6 +887,27 @@ function createInspector(): Inspector {
       publish();
     }
   }
+  async function setDarkMode(darkMode: boolean) {
+    if (busy) return;
+    busy = true;
+    status = "";
+    error = false;
+    publish();
+    try {
+      await request({
+        type: "set-dark-mode",
+        origin: location.origin,
+        darkMode,
+      });
+    } catch (cause) {
+      status =
+        cause instanceof Error ? cause.message : "Could not save dark mode.";
+      error = true;
+    } finally {
+      busy = false;
+      publish();
+    }
+  }
   async function setPaused(paused: boolean) {
     if (busy) return;
     busy = true;
@@ -1038,6 +1099,7 @@ function createInspector(): Inspector {
     child,
     restore,
     setPaused,
+    setDarkMode,
     openAccessSettings,
   };
 }

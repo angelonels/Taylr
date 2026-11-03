@@ -1,5 +1,7 @@
 # Third-party notices
 
+Dark mode embeds [Dark Reader](https://github.com/darkreader/darkreader), version 4.9.133, under the MIT license. The extension package includes its complete license at `licenses/darkreader.txt`.
+
 The controls in `src/dock/ui/` adapt the public UIArc Button, ActionButton, Input, Textarea, Select, Accordion, ColorPicker, Slider and Number Field components. Styling is translated to Tailwind. Controls use native semantics within the extension shadow tree; motion respects reduced-motion preferences. The build appends the installed runtime dependency licenses to the distributed copy.
 
 Source: https://github.com/kuratlielia/arc-library at `7156a0c582197942e8f1e0c0614dec2bd284f653`.

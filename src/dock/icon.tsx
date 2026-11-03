@@ -12,12 +12,14 @@ export function Icon({
     | "down"
     | "grip"
     | "restore"
-    | "site";
+    | "site"
+    | "moon";
 }) {
   const paths = {
     edit: "m16 3 5 5-12 12-6 1 1-6L16 3ZM14 5l5 5",
     fold: "M4 7h16M4 12h10M4 17h16",
     site: "M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7l-9-4Z",
+    moon: "M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z",
     hide: "M4 9V4h5m6 0h5v5m0 6v5h-5M9 20H4v-5M8 12h8",
     undo: "M9 5 4 10l5 5M4 10h9a6 6 0 0 1 0 12",
     rules: "M8 5h12M8 12h12M8 19h12M3 5h.01M3 12h.01M3 19h.01",
