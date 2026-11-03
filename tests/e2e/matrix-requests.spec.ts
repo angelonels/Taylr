@@ -72,6 +72,7 @@ const rejectedEdits: [string, Record<string, unknown>][] = [
 ];
 for (const [name, patch] of rejectedEdits)
   test(`Request matrix: edit ${name}`, async ({ site }) => {
+    await site.edit("#seed", { color: "red" }, "Seed");
     const before = await site.stored();
     const result = await site.rpc({
       type: "edit",
@@ -88,11 +89,13 @@ for (const key of ["__proto__", "constructor", "toString"])
   test(`Request matrix: edit refuses prototype key ${key}`, async ({
     site,
   }) => {
+    await site.edit("#seed", { color: "red" }, "Seed");
+    const before = await site.stored();
     const result = await site.rpcJson(
       `{"type":"edit","selector":"#a","label":"Matrix","styles":{"${key}":"auto"}}`,
     );
     expect(result.error).toBeTruthy();
-    expect(await site.stored()).toBeUndefined();
+    expect(await site.stored()).toEqual(before);
   });
 
 const rejectedAdds: [string, Record<string, unknown>][] = [
@@ -106,6 +109,8 @@ const rejectedAdds: [string, Record<string, unknown>][] = [
 ];
 for (const [name, patch] of rejectedAdds)
   test(`Request matrix: Hide ${name}`, async ({ site }) => {
+    await site.hide("#seed");
+    const before = await site.stored();
     const result = await site.rpc({
       type: "add",
       selector: "#a",
@@ -113,7 +118,7 @@ for (const [name, patch] of rejectedAdds)
       ...patch,
     });
     expect(result.error).toBeTruthy();
-    expect(await site.stored()).toBeUndefined();
+    expect(await site.stored()).toEqual(before);
   });
 
 const origins = [
@@ -156,9 +161,11 @@ for (const paused of ["true", 1, null, undefined])
   test(`Request matrix: Pause refuses ${JSON.stringify(paused)}`, async ({
     site,
   }) => {
+    await site.hide("#seed");
+    const before = await site.stored();
     const result = await site.rpc({ type: "set-paused", paused });
     expect(result.error).toBeTruthy();
-    expect(await site.stored()).toBeUndefined();
+    expect(await site.stored()).toEqual(before);
   });
 
 for (const [name, kind] of [

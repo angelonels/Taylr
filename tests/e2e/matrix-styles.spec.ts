@@ -86,27 +86,35 @@ for (const [key, value] of cases)
     site.serve("/", page);
     await site.register();
     const tab = await site.open();
-    const [baseline, , bystander] = (await tab.evaluate(read(key))) as string[];
-    await tab.evaluate(
-      ([key, value]) =>
-        document
-          .querySelector<HTMLElement>("#control")!
-          .style.setProperty(key, value),
-      [key, value],
-    );
+    // The target starts from another listed value, so a rule that never
+    // applies, or survives Restore, cannot match by coincidence. Its inline
+    // declaration also proves saved edits outrank page inline styles.
+    const alternate = cases.find(
+      ([other, next]) => other === key && next !== value,
+    )![1];
+    const prepare = () =>
+      tab.evaluate(
+        ([key, value, alternate]) => {
+          document
+            .querySelector<HTMLElement>("#target")!
+            .style.setProperty(key, alternate);
+          document
+            .querySelector<HTMLElement>("#control")!
+            .style.setProperty(key, value);
+        },
+        [key, value, alternate],
+      );
+    await prepare();
+    const [baseline, expected, bystander] = (await tab.evaluate(
+      read(key),
+    )) as string[];
+    expect(expected).not.toBe(baseline);
     await site.edit("#target", { [key]: value });
-    const expected = ((await tab.evaluate(read(key))) as string[])[1];
     await expect
       .poll(() => tab.evaluate(read(key)))
       .toEqual([expected, expected, bystander]);
     await tab.reload();
-    await tab.evaluate(
-      ([key, value]) =>
-        document
-          .querySelector<HTMLElement>("#control")!
-          .style.setProperty(key, value),
-      [key, value],
-    );
+    await prepare();
     await expect
       .poll(() => tab.evaluate(read(key)))
       .toEqual([expected, expected, bystander]);

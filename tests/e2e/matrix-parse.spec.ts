@@ -82,6 +82,8 @@ for (const [name, marker] of cuts)
         await expect(heading).toHaveCSS("color", "rgb(0, 0, 0)");
       } finally {
         release();
+        // A later case can receive the same local port and origin.
+        await rpc({ type: "restore" }).catch(() => {});
         await page.close();
         server.closeAllConnections();
         server.close();

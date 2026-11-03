@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { test as base, expect } from "@playwright/test";
 import { isolatedBrowser } from "./isolated-browser.mjs";
 import { driver, openDock, startHide, startEdit } from "./dock-actions.mjs";
@@ -108,9 +110,20 @@ export const test = base.extend({
     try {
       await provide(site);
     } finally {
-      await context.tracing
-        .stopChunk({ path: testInfo.outputPath("trace.zip") })
-        .catch(() => {});
+      // Titles that differ only by punctuation can share Playwright's
+      // sanitized output folder, so traces are keyed by the unique test ID.
+      const trace = join(
+        testInfo.project.outputDir,
+        "matrix-traces",
+        `${testInfo.testId}.zip`,
+      );
+      await context.tracing.stopChunk({ path: trace }).catch(() => {});
+      // An empty chunk writes no file; attach only real evidence.
+      if (existsSync(trace))
+        await testInfo.attach("trace", {
+          path: trace,
+          contentType: "application/zip",
+        });
       for (const page of opened) await page.close().catch(() => {});
       pages.delete(origin);
     }

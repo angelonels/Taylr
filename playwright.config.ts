@@ -1,8 +1,17 @@
+import { availableParallelism, totalmem } from "node:os";
 import { defineConfig } from "@playwright/test";
 import { evidencePath } from "./tests/run-evidence.mjs";
 export default defineConfig({
   testDir: "tests/e2e",
-  workers: 1,
+  // Measured on 4 CPUs: 2 workers took 13.5 minutes, 4 took 10.9 with the
+  // CPU 92% busy, so more workers than cores only adds contention. Each
+  // disposable browser also needs memory; keep about 2 GiB per worker.
+  workers:
+    Number(process.env.TAYLR_WORKERS) ||
+    Math.max(
+      1,
+      Math.min(availableParallelism(), Math.floor(totalmem() / 2 ** 31)),
+    ),
   fullyParallel: true,
   timeout: 300000,
   outputDir: evidencePath("results"),

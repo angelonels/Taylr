@@ -8,6 +8,7 @@ type Shape = {
   html: (generation: number) => string;
   target: string;
   others: string[];
+  volatile?: boolean;
 };
 const card = (title: string, extra = "") =>
   `<article${extra} style="padding:20px;margin:8px;border:1px solid #999">${title}</article>`;
@@ -34,6 +35,7 @@ const shapes: Shape[] = [
   },
   {
     name: "a regenerated UUID identifier",
+    volatile: true,
     html: (generation) =>
       `${card("Volatile", ` id="${generation ? "6f1d2c3b-aaaa-4bbb-8ccc-1234567890ab" : "0b9a8c7d-1111-4222-8333-abcdefabcdef"}"`)}${card("Neighbor")}`,
     target: "article:first-of-type",
@@ -41,6 +43,7 @@ const shapes: Shape[] = [
   },
   {
     name: "a regenerated framework identifier",
+    volatile: true,
     html: (generation) =>
       `${card("Volatile", ` id=":r${generation}:"`)}${card("Neighbor")}`,
     target: "article:first-of-type",
@@ -67,6 +70,7 @@ const shapes: Shape[] = [
   },
   {
     name: "a link with changing attribution",
+    volatile: true,
     html: (generation) =>
       `<nav><a href="/docs?page=2&utm_source=n${generation}" style="display:block;padding:8px">Docs</a><a href="/blog" style="display:block;padding:8px">Blog</a></nav>`,
     target: "a[href^='/docs']",
@@ -134,7 +138,10 @@ const variants = [
   "after volatile values regenerate",
 ] as const;
 for (const shape of shapes)
-  for (const variant of variants)
+  for (const variant of variants.filter(
+    (variant) =>
+      shape.volatile || variant !== "after volatile values regenerate",
+  ))
     test(`Picker matrix: ${shape.name} stays the only hidden element ${variant}`, async ({
       site,
     }) => {

@@ -3,15 +3,14 @@
 ## Commands
 
 ```sh
-npm run check
-npm run format:check
-npm run test:e2e -- --workers=2  # controlled acceptance
+npm run verify                   # check, format and controlled acceptance, as CI runs them
+npm run test:e2e                 # controlled acceptance only
 npm run test:canary -- --workers=2
 npm run test:live -- --workers=2
 npm run test:compare -- --workers=1
 ```
 
-The wrapper builds once and checks the bundled browser. Local runs fulfill their fixture bytes inside each disposable browser, including query variants; public-site runs do not depend on a development server. Tests launch disposable Playwright Chromium with temporary profiles; they never attach to personal browser sessions or reload an installed extension. Keep browser concurrency bounded by measured throughput and memory pressure; more browsers can make the suite slower. Test extension copies dereference build symlinks before applying fixture-only patches, so generated production files stay unchanged.
+The wrapper builds once and checks the bundled browser. Local runs fulfill their fixture bytes inside each disposable browser, including query variants; public-site runs do not depend on a development server. Tests launch disposable Playwright Chromium with temporary profiles; they never attach to personal browser sessions or reload an installed extension. Keep browser concurrency bounded by measured throughput and memory pressure; more browsers can make the suite slower. Workers default to the CPU count, capped at one per 2 GiB of memory; `TAYLR_WORKERS` overrides it. On 4 CPUs, 2 workers took 13.5 minutes and 4 took 10.9 with the CPU 92% busy, so the suite is CPU-bound beyond one worker per core. Local traces omit screencast frames, which cost about a sixth of suite time; they keep DOM snapshots, and tests still save explicit PNG evidence. `TAYLR_TRACE_SCREENSHOTS=1` restores frames; live runs always keep them. Test extension copies dereference build symlinks before applying fixture-only patches, so generated production files stay unchanged.
 
 Use local acceptance for ordinary edits, canaries for cross-page changes, and the full catalog for compatibility audits. `TAYLR_HEADED=1` enables visible disposable browsers. `TAYLR_SITES`, `TAYLR_COMPONENTS` and `TAYLR_CASES` filter live checks; `TAYLR_TRACE=full` retains successful live traces.
 
