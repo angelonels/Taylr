@@ -165,3 +165,41 @@ for (const [name, hostile] of stored)
       wellFormed ? "Hostile" : "Edited",
     );
   });
+
+// A stored hostile rule matches #a through a lenient DOM query. If Edit adopts
+// it, every saved change goes to a selector the stylesheet drops.
+test("CSS isolation: Edit never adopts a stored selector the stylesheet drops", async ({
+  site,
+}) => {
+  site.serve("/", page);
+  await site.register();
+  await site.bridge.evaluate(
+    ({ key, profile }) => chrome.storage.local.set({ [key]: profile }),
+    {
+      key: `site:${site.origin}`,
+      profile: {
+        version: 1,
+        origin: site.origin,
+        rules: [
+          {
+            id: "stored",
+            kind: "edit",
+            selector: "#a /*",
+            label: "Stored",
+            styles: { color: "red" },
+            createdAt: 0,
+          },
+        ],
+      },
+    },
+  );
+  const tab = await site.open();
+  const dock = await site.dock(tab);
+  await site.startEdit(dock);
+  await tab.locator("#a").click();
+  await dock.locator("#edit-color").fill("#008000");
+  await dock.locator("#edit-save").click();
+  await expect(dock.locator("#status")).toHaveText("Changes saved.");
+  await tab.reload();
+  await expect(tab.locator("#a")).toHaveCSS("color", "rgb(0, 128, 0)");
+});

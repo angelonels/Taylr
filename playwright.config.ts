@@ -1,17 +1,36 @@
+import { readFileSync } from "node:fs";
 import { availableParallelism, totalmem } from "node:os";
 import { defineConfig } from "@playwright/test";
 import { evidencePath } from "./tests/run-evidence.mjs";
+
+// Containers can cap CPU and memory below what the host reports.
+function cpus() {
+  try {
+    const [quota, period] = readFileSync("/sys/fs/cgroup/cpu.max", "utf8")
+      .trim()
+      .split(" ");
+    if (quota !== "max")
+      return Math.min(
+        availableParallelism(),
+        Math.max(1, Math.floor(Number(quota) / Number(period))),
+      );
+  } catch {
+    // No cgroup v2 CPU limit is visible.
+  }
+  return availableParallelism();
+}
+const memory = process.constrainedMemory() || totalmem();
+const requested = process.env.TAYLR_WORKERS;
 export default defineConfig({
   testDir: "tests/e2e",
   // Measured on 4 CPUs: 2 workers took 13.5 minutes, 4 took 10.9 with the
   // CPU 92% busy, so more workers than cores only adds contention. Each
   // disposable browser also needs memory; keep about 2 GiB per worker.
-  workers:
-    Number(process.env.TAYLR_WORKERS) ||
-    Math.max(
-      1,
-      Math.min(availableParallelism(), Math.floor(totalmem() / 2 ** 31)),
-    ),
+  // TAYLR_WORKERS accepts a count or a percentage of cores, such as 50%.
+  workers: requested?.endsWith("%")
+    ? requested
+    : Number(requested) ||
+      Math.max(1, Math.min(cpus(), Math.floor(memory / 2 ** 31))),
   fullyParallel: true,
   timeout: 300000,
   outputDir: evidencePath("results"),
